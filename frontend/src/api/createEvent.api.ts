@@ -11,7 +11,9 @@ export async function createEvent(token: string, data: any) {
     });
 
     if (!res.ok) {
-        throw new Error("Failed to create event");
+        const error = await res.json()
+        console.log("BACKEND ERROR:", error)
+        throw new Error( error.message || "Failed to create event");
     }
 
     const responseData = await res.json()

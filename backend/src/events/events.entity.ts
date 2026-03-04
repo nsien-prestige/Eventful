@@ -35,13 +35,8 @@ export class Event {
     @Column({ type: 'timestamptz' })
     date: Date
 
-    // 🔥 NEW FIELDS
-
     @Column({ nullable: true })
     imageUrl: string
-
-    @Column({ nullable: true })
-    location: string
 
     @Column({ nullable: true })
     category: string
@@ -51,6 +46,27 @@ export class Event {
 
     @Column({ type: 'int', nullable: true })
     capacity: number
+
+    @Column({ type: 'timestamptz', nullable: true })
+    endDate: Date;
+
+    @Column({ nullable: true })
+    location: string;
+
+    @Column({ default: false })
+    isOnline: boolean;
+
+    @Column({ nullable: true })
+    meetingLink: string;
+
+    @Column({ nullable: true })
+    refundPolicy: string;
+
+    @Column({ type: "json", nullable: true })
+    agenda: any[];
+
+    @Column({ type: "json", nullable: true })
+    tickets: any[];
 
     @ManyToOne(() => User, user => user.events, {
         eager: true,

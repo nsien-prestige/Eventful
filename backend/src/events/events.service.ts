@@ -2,7 +2,7 @@ import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundExce
 import { InjectRepository } from '@nestjs/typeorm';
 import { CreateEventDto } from 'src/events/create-event.dto';
 import { Repository } from 'typeorm';
-import { Event } from './events.entity';
+import { Event, EventStatus } from './events.entity';
 import { EventAttendee } from './events-entity.entity';
 import { Cache, CACHE_MANAGER } from '@nestjs/cache-manager';
 import { NotificationsService } from 'src/notifications/notifications.service';
@@ -93,7 +93,7 @@ export class EventsService {
         const cached = await this.cache.get(cacheKey)
         if (cached) return cached
 
-        const events = this.eventRepo.find()
+        const events = await this.eventRepo.find()
 
         await this.cache.set(cacheKey, events, 120)
         return events
@@ -101,10 +101,16 @@ export class EventsService {
 
     async attendEvent(eventId: string, userId: string) {
 
-        const event = await this.eventRepo.findOne({ where: { id: eventId } })
+        const event = await this.eventRepo.findOne({
+            where: { id: eventId }
+        });
 
         if (!event) {
-            throw new NotFoundException('Event not found')
+            throw new NotFoundException('Event not found');
+        }
+
+        if (event.status !== 'ACTIVE') {
+            throw new ConflictException('Event is not active');
         }
 
         const existing = await this.attendeeRepo.findOne({
@@ -112,25 +118,44 @@ export class EventsService {
                 user: { id: userId },
                 event: { id: eventId }
             }
-        })
+        });
 
         if (existing) {
-            throw new ConflictException('You already have a ticket for this event')
+            throw new ConflictException('You already have a ticket for this event');
         }
 
-        const attendance =  this.attendeeRepo.create({
+        // 🔥 Capacity check
+        if (event.capacity) {
+            const attendeeCount = await this.attendeeRepo.count({
+                where: { event: { id: eventId } }
+            });
+
+            if (attendeeCount >= event.capacity) {
+                event.status = EventStatus.CLOSED;
+
+                await this.eventRepo.save(event);
+                throw new ConflictException('Event is sold out');
+            }
+        }
+
+        const attendance = this.attendeeRepo.create({
             user: { id: userId },
-            event: { id: eventId }
-        })
+            event: { id: eventId },
+            qrHash: randomBytes(16).toString('hex')
+        });
 
-        await this.attendeeRepo.save(attendance)
+        await this.attendeeRepo.save(attendance);
 
-        const reminderTime = new Date(event.date)
-        reminderTime.setHours(reminderTime.getHours() - 24)
+        const reminderTime = new Date(event.date);
+        reminderTime.setHours(reminderTime.getHours() - 24);
 
-        await this.notificationsService.scheduleReminders(userId, event, reminderTime)
+        await this.notificationsService.scheduleReminders(
+            userId,
+            event,
+            reminderTime
+        );
 
-        return attendance
+        return attendance;
     }
 
     async getAttendees(eventId: string, creatorId: string) {
@@ -153,9 +178,35 @@ export class EventsService {
     }
 
     async findByPublicId(publicId: string) {
-        return this.eventRepo.findOne({
+        const event = await this.eventRepo.findOne({
             where: { publicId }
-        })
+        });
+
+        if (!event) {
+            throw new NotFoundException('Event not found');
+        }
+
+        // 🔥 increment view
+        await this.eventRepo.increment(
+            { publicId },
+            'viewCount',
+            1
+        );
+
+        // 🔥 count attendees
+        const attendeesCount = await this.attendeeRepo.count({
+            where: { event: { id: event.id } }
+        });
+
+        const ticketsLeft = event.capacity
+            ? event.capacity - attendeesCount
+            : null;
+
+        return {
+            ...event,
+            attendeesCount,
+            ticketsLeft
+        };
     }
 
     async incrementView(publicId: string) {
@@ -164,6 +215,26 @@ export class EventsService {
             'viewCount',
             1
         );
+    }
+
+    async delete(eventId: string, creatorId: string) {
+        const event = await this.eventRepo.findOne({
+            where: { id: eventId },
+            relations: ['creator']
+        })
+
+        if (!event) {
+            throw new NotFoundException('Event not found')
+        }
+
+        if (event.creator.id !== creatorId) {
+            throw new ForbiddenException('You are not the creator of this event')
+        }
+
+        await this.eventRepo.delete(eventId)
+        await this.cache.del('events:all')
+
+        return { message: "Event deleted successfully" }
     }
 
 }

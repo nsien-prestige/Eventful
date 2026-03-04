@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { EventsService } from './events.service';
 import { JwtAuthGuard } from 'src/auth/guards/auth.guard';
 import { RolesGuard } from 'src/auth/guards/roles.guard';
@@ -107,4 +107,22 @@ export class EventsController {
         getEventByPublicId(@Param('publicId') publicId: string) {
             return this.eventsService.findByPublicId(publicId)
         }
+
+    @Delete(':id')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(UserRole.CREATOR)
+    @ApiBearerAuth('access-token')
+    @ApiOperation({
+        summary: 'Delete event by Id',
+        description: "Deletes a particular event by it's event Id"
+    })
+    @ApiParam({
+        name: 'id',
+        description: 'Event ID',
+        example: 'f3b2a1c9-1234-4567-890a-bcdef1234567'
+    })
+    deleteEvent(@Param('id') id: string, @Req() req) {
+        return this.eventsService.delete(id, req.user.userId);
+    }
+
 }

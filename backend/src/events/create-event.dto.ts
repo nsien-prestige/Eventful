@@ -1,5 +1,6 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsDateString, IsInt, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { IsArray, IsDateString, IsInt, IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { isArrayBuffer } from "util/types";
 
 export class CreateEventDto {
     @IsNotEmpty()
@@ -19,6 +20,10 @@ export class CreateEventDto {
     date: string;
 
     @IsOptional()
+    @IsDateString()
+    endDate?: string;
+
+    @IsOptional()
     @IsString()
     imageUrl?: string
 
@@ -27,11 +32,25 @@ export class CreateEventDto {
     location?: string
 
     @IsOptional()
+    @IsArray()
+    agenda?: any[];
+
+    @IsOptional()
+    @IsArray()
+    ticket?: any[]
+
+    @IsOptional()
     @IsString()
     category?: string
 
     @IsOptional()
     @IsInt()
     capacity?: number
+
+    @IsOptional()
+    refundPolicy?: string;
+
+    @IsOptional()
+    isOnline?: boolean;
 }
 

@@ -383,6 +383,97 @@ input:focus, textarea:focus {
     cursor: pointer;
 }
 
+/* ================= AGENDA SLOT CARDS ================= */
+
+.agenda-slot-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.agenda-slot-card {
+    border: 1.5px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 20px;
+    background: #fafafa;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+}
+
+.agenda-slot-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.agenda-slot-number {
+    font-weight: 700;
+    font-size: 14px;
+    color: #3a3247;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.agenda-slot-remove {
+    background: none;
+    border: none;
+    font-size: 13px;
+    font-weight: 500;
+    color: #D63636;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.2s ease;
+}
+
+.agenda-slot-remove:hover {
+    background: #fff1f0;
+}
+
+.agenda-slot-card input,
+.agenda-slot-card textarea {
+    width: 100%;
+    box-sizing: border-box;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid #d8d6e0;
+    font-size: 14px;
+    background: #fff;
+    margin-bottom: 14px;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.agenda-slot-card input:focus,
+.agenda-slot-card textarea:focus {
+    outline: none;
+    border-color: #3659e3;
+    box-shadow: 0 0 0 3px rgba(54, 89, 227, 0.12);
+}
+
+.agenda-slot-card .agenda-time-row {
+    margin-bottom: 0;
+}
+
+.agenda-slot-card .agenda-time-row input {
+    margin-bottom: 0;
+}
+
+.agenda-slot-card .agenda-actions {
+    margin-bottom: 0;
+}
+
+.agenda-slot-optional {
+    display: none !important;
+}
+
+.agenda-slot-card textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
 /* ADD SECTIONS BLOCK */
 .add-sections-block {
     border: 2px dashed #dbdae3;
@@ -505,4 +596,137 @@ input:focus, textarea:focus {
         transform: translate(var(--x), var(--y)) scale(0.6);
         opacity: 0;
     }
+}
+
+.field-group {
+    margin-bottom: 28px;
+}
+
+.field-group label {
+    display: block;
+    font-size: 0.9375rem;
+    font-weight: 700;
+    color: #1e0a3c;
+    margin-bottom: 4px;
+}
+
+.field-required {
+    color: #d63636;
+    margin-left: 2px;
+}
+
+.field-help {
+    font-size: 0.8125rem;
+    color: #6f7287;
+    margin-bottom: 10px;
+    line-height: 1.5;
+}
+
+/* ── Inputs & textareas ── */
+.field-input {
+    width: 100%;
+    padding: 13px 14px;
+    border: 1.5px solid #d8d6e0;
+    border-radius: 6px;
+    font-size: 0.9375rem;
+    font-family: inherit;
+    color: #1e0a3c;
+    background: #fff;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
+    resize: vertical;
+}
+
+.field-input:focus {
+    outline: none;
+    border-color: #3659e3;
+    box-shadow: 0 0 0 3px rgba(54, 89, 227, 0.1);
+}
+
+.field-input::placeholder {
+    color: #aaa8b8;
+}
+
+.field-summary {
+    resize: none;
+}
+
+.field-description {
+    min-height: 140px;
+}
+
+/* ── Character counter ── */
+.field-char-count {
+    display: block;
+    text-align: right;
+    font-size: 0.75rem;
+    color: #9ca3af;
+    margin-top: 5px;
+    transition: color 0.2s ease;
+}
+
+.field-char-count--near {
+    color: #f59e0b;
+}
+
+.field-char-count--max {
+    color: #d63636;
+    font-weight: 600;
+}
+
+/* ── Side-by-side field row (type + category) ── */
+.field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 600px) {
+    .field-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ── Select dropdown ── */
+.select-wrapper {
+    position: relative;
+}
+
+.select-wrapper::after {
+    content: "";
+    position: absolute;
+    right: 14px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid #6f7287;
+    pointer-events: none;
+}
+
+.field-select {
+    width: 100%;
+    padding: 13px 40px 13px 14px;
+    border: 1.5px solid #d8d6e0;
+    border-radius: 6px;
+    font-size: 0.9375rem;
+    font-family: inherit;
+    color: #1e0a3c;
+    background: #fff;
+    appearance: none;
+    cursor: pointer;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
+}
+
+.field-select:focus {
+    outline: none;
+    border-color: #3659e3;
+    box-shadow: 0 0 0 3px rgba(54, 89, 227, 0.1);
+}
+
+.field-select option[value=""][disabled] {
+    color: #aaa8b8;
 }

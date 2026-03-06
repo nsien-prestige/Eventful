@@ -2,13 +2,14 @@
 import "./createEventPage.css";
 import { initDatePickers } from "../../components/date-picker/DatePicker";
 
-import { renderTitleSection, setupTitleSection } from "./utils/titleSection";
-import { renderDateSection }                     from "./utils/dateSection";
-import { setupImageUpload }                      from "./utils/imageUpload";
-import { setupCollapsible }                      from "./utils/collapsible";
-import { loadGoogleMaps }                        from "./utils/googleMaps";
-import { initSectionProgress }                   from "./utils/sectionProgress";
-import { setupAddSectionLogic }                  from "./utils/addSections";
+import { renderTitleSection, setupTitleSection }           from "./utils/titleSection";
+import { renderDateSection, setupDateSection,
+         restoreDateHeader }                               from "./utils/dateSection";
+import { setupImageUpload }                                from "./utils/imageUpload";
+import { setupCollapsible }                                from "./utils/collapsible";
+import { loadGoogleMaps }                                  from "./utils/googleMaps";
+import { initSectionProgress }                             from "./utils/sectionProgress";
+import { setupAddSectionLogic }                            from "./utils/addSections";
 
 export { getAgendaData }  from "./utils/agendaSection";
 export { getTitleData }   from "./utils/titleSection";
@@ -41,7 +42,7 @@ export function renderCreateEventPage(): void {
                 </div>
             </div>
 
-            <!-- BASIC INFO (TITLE) SECTION -->
+            <!-- BASIC INFO SECTION -->
             ${renderTitleSection()}
 
             <!-- DATE & LOCATION SECTION -->
@@ -90,8 +91,14 @@ export function renderCreateEventPage(): void {
 
     setupImageUpload();
     setupTitleSection();
+    setupDateSection();
+
+    // Title section: no onExpand needed (heading/subtext are plain text, always correct)
     setupCollapsible("titleHeader", "titleContent", "titleToggle", "titleSubtext");
-    setupCollapsible("dateHeader",  "dateContent",  "dateToggle",  "dateSubtext");
+
+    // Date section: restore the default "Date & Location" header when re-opened
+    setupCollapsible("dateHeader", "dateContent", "dateToggle", "dateSubtext", restoreDateHeader);
+
     initDatePickers();
     loadGoogleMaps();
     initSectionProgress();

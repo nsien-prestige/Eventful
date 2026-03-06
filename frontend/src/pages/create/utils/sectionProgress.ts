@@ -1,5 +1,6 @@
 import { collapseSection } from "./collapsible";
 import { updateTitlePreview } from "./titleSection";
+import { updateDatePreview, getDateLocationMode } from "./dateSection";
 
 export function launchConfetti(target: HTMLElement): void {
     const rect = target.getBoundingClientRect();
@@ -58,17 +59,17 @@ export function initSectionProgress(): void {
 
     /* ── BASIC INFO (TITLE) SECTION ─────────────────────────────── */
 
-    const titleInput    = document.getElementById("title")     as HTMLInputElement;
-    const summaryInput  = document.getElementById("summary")   as HTMLTextAreaElement;
-    const categoryInput = document.getElementById("category")  as HTMLSelectElement;
+    const titleInput    = document.getElementById("title")    as HTMLInputElement;
+    const summaryInput  = document.getElementById("summary")  as HTMLTextAreaElement;
+    const categoryInput = document.getElementById("category") as HTMLSelectElement;
     const titleStatus   = document.getElementById("titleStatus")!;
     const titleState    = { value: false };
 
     function validateTitleSection(): void {
         const isComplete =
-            titleInput?.value.trim().length > 0   &&
-            summaryInput?.value.trim().length > 0  &&
-            categoryInput?.value !== "" && categoryInput?.value !== undefined;
+            titleInput?.value.trim().length > 0  &&
+            summaryInput?.value.trim().length > 0 &&
+            !!categoryInput?.value;
 
         handleCompletion(
             isComplete,
@@ -76,12 +77,12 @@ export function initSectionProgress(): void {
             titleStatus,
             "titleContent",
             "titleToggle",
-            () => updateTitlePreview()   // swap heading + subtext before collapsing
+            () => updateTitlePreview()
         );
     }
 
-    titleInput?.addEventListener("input",    validateTitleSection);
-    summaryInput?.addEventListener("input",  validateTitleSection);
+    titleInput?.addEventListener("input",     validateTitleSection);
+    summaryInput?.addEventListener("input",   validateTitleSection);
     categoryInput?.addEventListener("change", validateTitleSection);
 
     document.getElementById("titleContent")?.addEventListener("focusout", () => {
@@ -102,29 +103,46 @@ export function initSectionProgress(): void {
     const dateState     = { value: false };
 
     function validateDateSection(): void {
-        const isOnline = (document.getElementById("onlineToggle") as HTMLInputElement)?.checked;
+        const mode = getDateLocationMode();
 
-        const locationFilled = isOnline
-            ? meetingInput?.value.trim().length > 0
-            : locationInput?.value.trim().length > 0;
+        let locationFilled = false;
+        if (mode === "in-person") {
+            locationFilled = locationInput?.value.trim().length > 0;
+        } else if (mode === "online") {
+            locationFilled = meetingInput?.value.trim().length > 0;
+        } else {
+            locationFilled = true; // TBD needs no location
+        }
 
         const isComplete =
-            !!dateInput?.value   &&
-            !!startInput?.value  &&
-            !!endInput?.value    &&
+            !!dateInput?.value  &&
+            !!startInput?.value &&
+            !!endInput?.value   &&
             locationFilled;
 
-        handleCompletion(isComplete, dateState, dateStatus, "dateContent", "dateToggle");
+        handleCompletion(
+            isComplete,
+            dateState,
+            dateStatus,
+            "dateContent",
+            "dateToggle",
+            () => updateDatePreview()
+        );
     }
 
-    dateInput?.addEventListener("change",  validateDateSection);
-    startInput?.addEventListener("change", validateDateSection);
-    endInput?.addEventListener("change",   validateDateSection);
+    dateInput?.addEventListener("change",    validateDateSection);
+    startInput?.addEventListener("change",   validateDateSection);
+    endInput?.addEventListener("change",     validateDateSection);
     locationInput?.addEventListener("input", validateDateSection);
     meetingInput?.addEventListener("input",  validateDateSection);
 
+    document.querySelectorAll(".loc-pill").forEach(pill => {
+        pill.addEventListener("click", () => setTimeout(validateDateSection, 0));
+    });
+
     document.getElementById("dateContent")?.addEventListener("focusout", () => {
         if (dateState.value && !isSectionFocused("dateContent")) {
+            updateDatePreview();
             collapseSection("dateContent", "dateToggle");
         }
     });

@@ -3,9 +3,9 @@ interface CollapsibleSection {
     contentId: string;
     toggleId:  string;
     subtextId: string;
+    onExpand?: () => void;
 }
 
-// All registered sections — used to close others when one opens
 const registry: CollapsibleSection[] = [];
 
 export function collapseSection(contentId: string, toggleId?: string): void {
@@ -35,13 +35,15 @@ export function collapseSection(contentId: string, toggleId?: string): void {
 
 function expandSection(section: CollapsibleSection): void {
     const content = document.getElementById(section.contentId);
-    const toggle  = document.getElementById(section.toggleId);
-    const subtext = document.getElementById(section.subtextId);
-
     if (!content) return;
 
+    // Fire the optional restore callback (e.g. swap preview → default header)
+    section.onExpand?.();
+
     content.classList.remove("hidden");
-    if (toggle)  toggle.textContent = "−";
+
+    // Hide the default intro subtext while the section is open
+    const subtext = document.getElementById(section.subtextId);
     if (subtext) subtext.style.display = "none";
 }
 
@@ -54,7 +56,7 @@ function collapseOthers(exceptContentId: string): void {
 
         collapseSection(sec.contentId, sec.toggleId);
 
-        // Restore subtext visibility for the collapsed section
+        // Restore subtext when collapsing a non-completed section
         const subtext = document.getElementById(sec.subtextId);
         if (subtext) subtext.style.display = "block";
     });
@@ -64,9 +66,10 @@ export function setupCollapsible(
     headerId:  string,
     contentId: string,
     toggleId:  string,
-    subtextId: string
+    subtextId: string,
+    onExpand?: () => void
 ): void {
-    const section: CollapsibleSection = { headerId, contentId, toggleId, subtextId };
+    const section: CollapsibleSection = { headerId, contentId, toggleId, subtextId, onExpand };
     registry.push(section);
 
     const header = document.getElementById(headerId);
@@ -78,10 +81,7 @@ export function setupCollapsible(
         const content = document.getElementById(contentId);
         if (!content) return;
 
-        const isHidden = content.classList.contains("hidden");
-
-        // Only allow opening — sections close via completion, not manual toggle
-        if (isHidden) {
+        if (content.classList.contains("hidden")) {
             collapseOthers(contentId);
             expandSection(section);
         }

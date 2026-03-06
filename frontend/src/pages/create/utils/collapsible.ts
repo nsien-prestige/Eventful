@@ -37,12 +37,12 @@ function expandSection(section: CollapsibleSection): void {
     const content = document.getElementById(section.contentId);
     if (!content) return;
 
-    // Fire the optional restore callback (e.g. swap preview → default header)
+    // Restore the section's default header if it has a custom preview state
     section.onExpand?.();
 
     content.classList.remove("hidden");
 
-    // Hide the default intro subtext while the section is open
+    // Hide intro subtext while the form is open
     const subtext = document.getElementById(section.subtextId);
     if (subtext) subtext.style.display = "none";
 }
@@ -56,7 +56,6 @@ function collapseOthers(exceptContentId: string): void {
 
         collapseSection(sec.contentId, sec.toggleId);
 
-        // Restore subtext when collapsing a non-completed section
         const subtext = document.getElementById(sec.subtextId);
         if (subtext) subtext.style.display = "block";
     });

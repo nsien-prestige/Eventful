@@ -1,3 +1,4 @@
+import "./dateSection.css";
 export type LocationMode = "in-person" | "online" | "tbd";
 
 export function renderDateSection(): string {
@@ -5,7 +6,7 @@ export function renderDateSection(): string {
         <div class="section-card collapsible" id="dateSection">
             <div class="section-header" id="dateHeader">
 
-                <!-- DEFAULT HEADER: visible while section is closed + incomplete -->
+                <!-- DEFAULT STATE: shown when incomplete or open for editing -->
                 <div class="section-heading-group" id="dateDefaultHeader">
                     <h2 id="dateHeading">Date &amp; Location</h2>
                     <p class="section-subtext" id="dateSubtext">
@@ -13,32 +14,30 @@ export function renderDateSection(): string {
                     </p>
                 </div>
 
-                <!-- PREVIEW HEADER: visible when section is closed + completed -->
+                <!-- PREVIEW STATE: only revealed by updateDatePreview() after completion -->
                 <div class="date-preview-header hidden" id="datePreviewHeader">
-
                     <div class="date-preview-col">
-                        <h3 class="date-preview-title">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <p class="date-preview-col-title">Date and time</p>
+                        <p class="date-preview-value">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 0 1 2.25-2.25h13.5A2.25 2.25 0 0 1 21 7.5v11.25m-18 0A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75m-18 0v-7.5A2.25 2.25 0 0 1 5.25 9h13.5A2.25 2.25 0 0 1 21 11.25v7.5" />
                             </svg>
-                            Date and time
-                        </h3>
-                        <p class="date-preview-value" id="datePreviewDatetime">—</p>
+                            <span id="datePreviewDatetimeText">—</span>
+                        </p>
                     </div>
 
                     <div class="date-preview-divider"></div>
 
                     <div class="date-preview-col">
-                        <h3 class="date-preview-title">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                        <p class="date-preview-col-title">Location</p>
+                        <p class="date-preview-value">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
                             </svg>
-                            Location
-                        </h3>
-                        <p class="date-preview-value" id="datePreviewLocation">—</p>
+                            <span id="datePreviewLocationText">—</span>
+                        </p>
                     </div>
-
                 </div>
 
                 <div class="section-actions">
@@ -120,7 +119,7 @@ export function renderDateSection(): string {
                     />
                 </div>
 
-                <!-- TBD: INFO NOTE -->
+                <!-- TBD NOTE -->
                 <div id="tbdBlock" class="tbd-note hidden">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
@@ -134,6 +133,10 @@ export function renderDateSection(): string {
 }
 
 export function setupDateSection(): void {
+    // Guarantee preview is hidden on init — never shows until updateDatePreview() is called
+    document.getElementById("datePreviewHeader")?.classList.add("hidden");
+    document.getElementById("dateDefaultHeader")?.classList.remove("hidden");
+
     const pills       = document.querySelectorAll<HTMLButtonElement>(".loc-pill");
     const venueBlock  = document.getElementById("venueBlock")!;
     const onlineBlock = document.getElementById("onlineBlock")!;
@@ -146,10 +149,8 @@ export function setupDateSection(): void {
             const mode = pill.dataset.mode as LocationMode;
             if (mode === currentMode) return;
             currentMode = mode;
-
             pills.forEach(p => p.classList.remove("active"));
             pill.classList.add("active");
-
             venueBlock.classList.toggle("hidden",  mode !== "in-person");
             onlineBlock.classList.toggle("hidden", mode !== "online");
             tbdBlock.classList.toggle("hidden",    mode !== "tbd");
@@ -162,27 +163,21 @@ export function getDateLocationMode(): LocationMode {
     return (active?.dataset.mode as LocationMode) ?? "in-person";
 }
 
-/**
- * flatpickr hides the original <input> with display:none and inserts
- * a sibling altInput immediately after it with the human-readable value.
- * The altInput has class="flatpickr-input" and attribute readonly.
- * We find it by querying the parent .floating-field for the visible input.
- */
+/** Reads flatpickr's altInput (the human-readable sibling) rather than the hidden raw input */
 function getFlatpickrDisplayValue(inputId: string): string {
     const original = document.getElementById(inputId) as HTMLInputElement | null;
     if (!original) return "";
 
-    // The alt input is always the next sibling when altInput: true is set
+    // flatpickr inserts altInput as immediate next sibling of the original input
     const sibling = original.nextElementSibling as HTMLInputElement | null;
     if (sibling && sibling.tagName === "INPUT" && sibling.value) {
         return sibling.value;
     }
 
-    // Fallback: search within the same .floating-field wrapper
+    // Fallback: scan the floating-field wrapper
     const wrapper = original.closest(".floating-field");
     if (wrapper) {
-        const inputs = wrapper.querySelectorAll<HTMLInputElement>("input");
-        for (const input of inputs) {
+        for (const input of wrapper.querySelectorAll<HTMLInputElement>("input")) {
             if (input !== original && input.value) return input.value;
         }
     }
@@ -190,38 +185,33 @@ function getFlatpickrDisplayValue(inputId: string): string {
     return original.value;
 }
 
+/** Called just before collapse on completion — swaps header to two-column preview */
 export function updateDatePreview(): void {
     const defaultHeader = document.getElementById("dateDefaultHeader")!;
     const previewHeader = document.getElementById("datePreviewHeader")!;
-    const datetimeEl    = document.getElementById("datePreviewDatetime")!;
-    const locationEl    = document.getElementById("datePreviewLocation")!;
 
-    // Read human-readable values from flatpickr alt inputs
-    const dateStr  = getFlatpickrDisplayValue("eventDate");   // e.g. "Fri, Mar 20, 2026"
-    const startStr = getFlatpickrDisplayValue("startTime");   // e.g. "10:00 AM"
-    const endStr   = getFlatpickrDisplayValue("endTime");     // e.g. "12:00 PM"
+    const dateStr  = getFlatpickrDisplayValue("eventDate");
+    const startStr = getFlatpickrDisplayValue("startTime");
+    const endStr   = getFlatpickrDisplayValue("endTime");
 
-    // Build: "Fri, Mar 20, 2026 · 10:00 AM - 12:00 PM"
     const timeRange   = [startStr, endStr].filter(Boolean).join(" - ");
     const datetimeStr = [dateStr, timeRange].filter(Boolean).join(" · ");
-    datetimeEl.textContent = datetimeStr || "—";
 
-    // Location
+    document.getElementById("datePreviewDatetimeText")!.textContent = datetimeStr || "—";
+
     const mode = getDateLocationMode();
-    if (mode === "in-person") {
-        const loc = (document.getElementById("locationSearch") as HTMLInputElement)?.value.trim();
-        locationEl.textContent = loc || "In-person";
-    } else if (mode === "online") {
-        locationEl.textContent = "Online event";
-    } else {
-        locationEl.textContent = "Location TBD";
-    }
+    const locationStr =
+        mode === "online" ? "Online event" :
+        mode === "tbd"    ? "Location TBD" :
+        (document.getElementById("locationSearch") as HTMLInputElement)?.value.trim() || "In-person";
 
-    // Swap to preview header
+    document.getElementById("datePreviewLocationText")!.textContent = locationStr;
+
     defaultHeader.classList.add("hidden");
     previewHeader.classList.remove("hidden");
 }
 
+/** Called when the section is re-opened — restores the default "Date & Location" header */
 export function restoreDateHeader(): void {
     document.getElementById("dateDefaultHeader")?.classList.remove("hidden");
     document.getElementById("datePreviewHeader")?.classList.add("hidden");

@@ -2,14 +2,14 @@
 import "./createEventPage.css";
 import { initDatePickers } from "../../components/date-picker/DatePicker";
 
-import { renderTitleSection, setupTitleSection }           from "./utils/titleSection";
+import { renderTitleSection, setupTitleSection }         from "./utils/titleSection";
 import { renderDateSection, setupDateSection,
-         restoreDateHeader }                               from "./utils/dateSection";
-import { setupImageUpload }                                from "./utils/imageUpload";
-import { setupCollapsible }                                from "./utils/collapsible";
-import { loadGoogleMaps }                                  from "./utils/googleMaps";
-import { initSectionProgress }                             from "./utils/sectionProgress";
-import { setupAddSectionLogic }                            from "./utils/addSections";
+         restoreDateHeader }                             from "./utils/dateSection";
+import { setupImageUpload }                              from "./utils/imageUpload";
+import { setupCollapsible }                              from "./utils/collapsible";
+import { loadGoogleMaps }                                from "./utils/googleMaps";
+import { initSectionProgress }                           from "./utils/sectionProgress";
+import { setupAddSectionLogic }                          from "./utils/addSections";
 
 export { getAgendaData }  from "./utils/agendaSection";
 export { getTitleData }   from "./utils/titleSection";
@@ -93,10 +93,10 @@ export function renderCreateEventPage(): void {
     setupTitleSection();
     setupDateSection();
 
-    // Title section: no onExpand needed (heading/subtext are plain text, always correct)
+    // Title: no custom onExpand needed
     setupCollapsible("titleHeader", "titleContent", "titleToggle", "titleSubtext");
 
-    // Date section: restore the default "Date & Location" header when re-opened
+    // Date: restoreDateHeader swaps preview → default when re-opened
     setupCollapsible("dateHeader", "dateContent", "dateToggle", "dateSubtext", restoreDateHeader);
 
     initDatePickers();

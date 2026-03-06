@@ -1,0 +1,299 @@
+/* =====================================================
+   AGENDA SECTION
+   ===================================================== */
+
+.agenda-section {
+    border: 2px solid #3659e3;
+}
+
+/* ── Top bar: title + delete ── */
+.agenda-top-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+}
+
+.agenda-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: #1e0a3c;
+    margin: 0;
+}
+
+.agenda-delete-btn {
+    background: none;
+    border: none;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #d63636;
+    cursor: pointer;
+    padding: 4px 0;
+    transition: opacity 0.2s ease;
+    font-family: inherit;
+}
+
+.agenda-delete-btn:hover {
+    opacity: 0.7;
+}
+
+/* ── Description text ── */
+.agenda-description {
+    font-size: 0.875rem;
+    color: #585163;
+    line-height: 1.6;
+    margin: 0 0 24px 0;
+}
+
+.agenda-slot-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* ── Slot card ── */
+.agenda-slot-card {
+    border: 1.5px solid #e5e7eb;
+    border-radius: 8px;
+    padding: 20px;
+    background: #fff;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Top row: title field + trash icon */
+.agenda-slot-top {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+}
+
+.agenda-slot-title-field {
+    flex: 1;
+    position: relative;
+    border: 1.5px solid #d8d6e0;
+    border-radius: 6px;
+    padding: 10px 14px 8px;
+    transition: border-color 0.2s ease;
+}
+
+.agenda-slot-title-field:focus-within {
+    border-color: #3659e3;
+    box-shadow: 0 0 0 3px rgba(54, 89, 227, 0.1);
+}
+
+.agenda-slot-title-field.has-error,
+.agenda-slot-title-input.has-error ~ * {
+    border-color: #d63636;
+}
+
+/* When the input inside has error, style the wrapper */
+.agenda-slot-title-field:has(.has-error) {
+    border-color: #d63636;
+}
+
+.agenda-slot-title-label {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6f7287;
+    margin-bottom: 2px;
+    line-height: 1;
+}
+
+.agenda-required {
+    color: #d63636;
+}
+
+.agenda-slot-title-input {
+    width: 100%;
+    border: none !important;
+    outline: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    font-size: 0.9375rem;
+    color: #1e0a3c;
+    background: transparent;
+    font-family: inherit;
+    border-radius: 0 !important;
+}
+
+/* Error indicator icon inside field */
+.agenda-slot-title-field:has(.has-error)::after {
+    content: "";
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 20px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='%23d63636'%3E%3Cpath fill-rule='evenodd' d='M2.25 12c0-5.385 4.365-9.75 9.75-9.75s9.75 4.365 9.75 9.75-4.365 9.75-9.75 9.75S2.25 17.385 2.25 12ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z' clip-rule='evenodd'/%3E%3C/svg%3E") center/contain no-repeat;
+}
+
+.agenda-slot-error {
+    display: block;
+    font-size: 0.75rem;
+    color: #d63636;
+    margin-top: 6px;
+    font-weight: 500;
+}
+
+.agenda-slot-error.hidden {
+    display: none;
+}
+
+/* Trash button */
+.agenda-slot-trash {
+    flex-shrink: 0;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 6px;
+    color: #9ca3af;
+    transition: color 0.2s ease, background 0.2s ease;
+    margin-top: 4px;
+}
+
+.agenda-slot-trash:hover {
+    color: #d63636;
+    background: #fff1f0;
+}
+
+/* ── Time row ── */
+.agenda-time-row {
+    display: flex;
+    gap: 12px;
+}
+
+.agenda-time-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border: 1.5px solid #d8d6e0;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: #585163;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    min-width: 150px;
+}
+
+.agenda-time-btn svg {
+    flex-shrink: 0;
+    color: #6f7287;
+}
+
+.agenda-time-btn:hover {
+    border-color: #3659e3;
+}
+
+.agenda-time-btn:focus-within {
+    border-color: #3659e3;
+    box-shadow: 0 0 0 3px rgba(54, 89, 227, 0.1);
+}
+
+.agenda-time-btn.has-value {
+    border-color: #3659e3;
+    color: #1e0a3c;
+    font-weight: 600;
+}
+
+.agenda-time-btn.has-value svg {
+    color: #3659e3;
+}
+
+/* Hidden actual time input inside button */
+.agenda-time-input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+    border: none !important;
+    padding: 0 !important;
+}
+
+/* ── Inline action buttons (Host, Description) ── */
+.agenda-inline-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.agenda-inline-btn {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    border: none;
+    background: none;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #585163;
+    cursor: pointer;
+    border-radius: 6px;
+    font-family: inherit;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.agenda-inline-btn:hover {
+    background: #f3f4f6;
+    color: #1e0a3c;
+}
+
+.agenda-inline-btn.active {
+    color: #3659e3;
+    background: #eef1ff;
+}
+
+/* ── Collapsible fields (host input, desc textarea) ── */
+.agenda-collapsible-field {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1.5px solid #d8d6e0;
+    border-radius: 6px;
+    font-size: 0.9375rem;
+    font-family: inherit;
+    color: #1e0a3c;
+    background: #fff;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    box-sizing: border-box;
+    resize: vertical;
+}
+
+.agenda-collapsible-field:focus {
+    outline: none;
+    border-color: #3659e3;
+    box-shadow: 0 0 0 3px rgba(54, 89, 227, 0.1);
+}
+
+.agenda-collapsible-field.hidden {
+    display: none !important;
+}
+
+/* ── + Add slot button ── */
+.agenda-add-slot-btn {
+    width: 100%;
+    margin-top: 8px;
+    padding: 16px;
+    border-radius: 8px;
+    background: #f3f4f6;
+    border: none;
+    font-size: 0.9375rem;
+    font-weight: 600;
+    color: #3659e3;
+    cursor: pointer;
+    font-family: inherit;
+    transition: background 0.2s ease;
+}
+
+.agenda-add-slot-btn:hover {
+    background: #e9eaec;
+}

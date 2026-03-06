@@ -111,7 +111,7 @@ export function initSectionProgress(): void {
         } else if (mode === "online") {
             locationFilled = meetingInput?.value.trim().length > 0;
         } else {
-            locationFilled = true; // TBD needs no location
+            locationFilled = true; // TBD — no location required
         }
 
         const isComplete =

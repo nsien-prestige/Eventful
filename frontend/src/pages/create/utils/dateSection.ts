@@ -1,4 +1,6 @@
 import "./dateSection.css";
+import { setupTimePicker } from "./timePickerHelper";
+
 export type LocationMode = "in-person" | "online" | "tbd";
 
 export function renderDateSection(): string {
@@ -6,7 +8,7 @@ export function renderDateSection(): string {
         <div class="section-card collapsible" id="dateSection">
             <div class="section-header" id="dateHeader">
 
-                <!-- DEFAULT STATE: shown when incomplete or open for editing -->
+                <!-- DEFAULT STATE -->
                 <div class="section-heading-group" id="dateDefaultHeader">
                     <h2 id="dateHeading">Date &amp; Location</h2>
                     <p class="section-subtext" id="dateSubtext">
@@ -14,7 +16,7 @@ export function renderDateSection(): string {
                     </p>
                 </div>
 
-                <!-- PREVIEW STATE: only revealed by updateDatePreview() after completion -->
+                <!-- PREVIEW STATE -->
                 <div class="date-preview-header hidden" id="datePreviewHeader">
                     <div class="date-preview-col">
                         <p class="date-preview-col-title">Date and time</p>
@@ -85,14 +87,20 @@ export function renderDateSection(): string {
                             <input type="text" id="eventDate" placeholder=" " />
                             <label for="eventDate">Event Date</label>
                         </div>
-                        <div class="floating-field">
-                            <input type="text" id="startTime" placeholder=" " />
-                            <label for="startTime">Start Time</label>
-                        </div>
-                        <div class="floating-field">
-                            <input type="text" id="endTime" placeholder=" " />
-                            <label for="endTime">End Time</label>
-                        </div>
+                        <button class="date-time-btn" data-target="startTime" type="button">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                            </svg>
+                            <span class="date-time-label" id="startTimeLabel">Start Time</span>
+                            <input class="date-time-input" id="startTime" type="text" placeholder="Start Time" readonly />
+                        </button>
+                        <button class="date-time-btn" data-target="endTime" type="button">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                            </svg>
+                            <span class="date-time-label" id="endTimeLabel">End Time</span>
+                            <input class="date-time-input" id="endTime" type="text" placeholder="End Time" readonly />
+                        </button>
                     </div>
                 </div>
 
@@ -133,7 +141,6 @@ export function renderDateSection(): string {
 }
 
 export function setupDateSection(): void {
-    // Guarantee preview is hidden on init — never shows until updateDatePreview() is called
     document.getElementById("datePreviewHeader")?.classList.add("hidden");
     document.getElementById("dateDefaultHeader")?.classList.remove("hidden");
 
@@ -156,6 +163,14 @@ export function setupDateSection(): void {
             tbdBlock.classList.toggle("hidden",    mode !== "tbd");
         });
     });
+
+    /* Wire up start/end time buttons using shared helper */
+    document.querySelectorAll<HTMLButtonElement>(".date-time-btn").forEach(btn => {
+        const targetId = btn.dataset.target!;
+        const inputEl  = document.getElementById(targetId) as HTMLInputElement;
+        const labelEl  = btn.querySelector(".date-time-label") as HTMLElement;
+        setupTimePicker(btn, inputEl, labelEl);
+    });
 }
 
 export function getDateLocationMode(): LocationMode {
@@ -163,18 +178,15 @@ export function getDateLocationMode(): LocationMode {
     return (active?.dataset.mode as LocationMode) ?? "in-person";
 }
 
-/** Reads flatpickr's altInput (the human-readable sibling) rather than the hidden raw input */
 function getFlatpickrDisplayValue(inputId: string): string {
     const original = document.getElementById(inputId) as HTMLInputElement | null;
     if (!original) return "";
 
-    // flatpickr inserts altInput as immediate next sibling of the original input
     const sibling = original.nextElementSibling as HTMLInputElement | null;
     if (sibling && sibling.tagName === "INPUT" && sibling.value) {
         return sibling.value;
     }
 
-    // Fallback: scan the floating-field wrapper
     const wrapper = original.closest(".floating-field");
     if (wrapper) {
         for (const input of wrapper.querySelectorAll<HTMLInputElement>("input")) {
@@ -185,14 +197,17 @@ function getFlatpickrDisplayValue(inputId: string): string {
     return original.value;
 }
 
-/** Called just before collapse on completion — swaps header to two-column preview */
 export function updateDatePreview(): void {
     const defaultHeader = document.getElementById("dateDefaultHeader")!;
     const previewHeader = document.getElementById("datePreviewHeader")!;
 
     const dateStr  = getFlatpickrDisplayValue("eventDate");
-    const startStr = getFlatpickrDisplayValue("startTime");
-    const endStr   = getFlatpickrDisplayValue("endTime");
+    const startEl  = document.getElementById("startTimeLabel") as HTMLElement;
+    const endEl    = document.getElementById("endTimeLabel") as HTMLElement;
+
+    // Use the label text if it has been updated by the picker, else fall back to raw input
+    const startStr = startEl?.textContent !== "Start Time" ? startEl.textContent ?? "" : "";
+    const endStr   = endEl?.textContent   !== "End Time"   ? endEl.textContent   ?? "" : "";
 
     const timeRange   = [startStr, endStr].filter(Boolean).join(" - ");
     const datetimeStr = [dateStr, timeRange].filter(Boolean).join(" · ");
@@ -211,7 +226,6 @@ export function updateDatePreview(): void {
     previewHeader.classList.remove("hidden");
 }
 
-/** Called when the section is re-opened — restores the default "Date & Location" header */
 export function restoreDateHeader(): void {
     document.getElementById("dateDefaultHeader")?.classList.remove("hidden");
     document.getElementById("datePreviewHeader")?.classList.add("hidden");

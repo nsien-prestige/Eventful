@@ -1,5 +1,6 @@
 import "./agendaSection.css";
-import "../createEventPage.css"
+import "../createEventPage.css";
+import { setupTimePicker } from "./timePickerHelper";
 
 export interface AgendaSlot {
     title: string;
@@ -42,7 +43,6 @@ export function setupAgendaSection(sectionElement: HTMLElement): void {
     const slotListEl = sectionElement.querySelector("#agendaSlotList") as HTMLElement;
     const addSlotBtn = sectionElement.querySelector("#addAgendaSlotBtn") as HTMLButtonElement;
 
-    /* ── Add a slot card ── */
     function addSlot(): void {
         const slotId = slotCounter++;
         const card   = document.createElement("div");
@@ -50,23 +50,25 @@ export function setupAgendaSection(sectionElement: HTMLElement): void {
         card.dataset.slotId = String(slotId);
 
         card.innerHTML = `
-            <div class="agenda-slot-top">
-                <div class="agenda-slot-title-field">
-                    <label class="agenda-slot-title-label" for="slotTitle_${slotId}">Title <span class="agenda-required">*</span></label>
-                    <input
-                        class="agenda-slot-title-input"
-                        id="slotTitle_${slotId}"
-                        type="text"
-                        placeholder=""
-                        autocomplete="off"
-                    />
-                    <span class="agenda-slot-error hidden" id="slotError_${slotId}">Title can't be left blank</span>
+            <div class="agenda-title-wrapper">
+                <div class="agenda-slot-top">
+                    <div class="agenda-slot-title-field">
+                        <label class="agenda-slot-title-label" for="slotTitle_${slotId}">Title <span class="agenda-required">*</span></label>
+                        <input
+                            class="agenda-slot-title-input"
+                            id="slotTitle_${slotId}"
+                            type="text"
+                            placeholder=""
+                            autocomplete="off"
+                        />
+                    </div>
+                    <button class="agenda-slot-trash" type="button" title="Remove slot">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                        </svg>
+                    </button>
                 </div>
-                <button class="agenda-slot-trash" type="button" title="Remove slot">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
-                    </svg>
-                </button>
+                <span class="agenda-slot-error hidden" id="slotError_${slotId}">Title can't be left blank</span>
             </div>
 
             <div class="agenda-time-row">
@@ -86,6 +88,22 @@ export function setupAgendaSection(sectionElement: HTMLElement): void {
                 </button>
             </div>
 
+            <!-- DESC WRAPPER (hidden until button clicked) -->
+            <div class="agenda-desc-wrapper" style="display:none">
+                <div class="agenda-desc-header">
+                    <span class="agenda-desc-label">Description</span>
+                    <button class="agenda-desc-remove" type="button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M6 18 18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <textarea class="agenda-slot-desc agenda-collapsible-field" style="display:block" rows="3" placeholder="Describe this slot..."></textarea>
+            </div>
+
+            <input class="agenda-slot-host agenda-collapsible-field" style="display:none" type="text" placeholder="Host or Artist name" />
+
+            <!-- INLINE ACTIONS — always at bottom -->
             <div class="agenda-inline-actions">
                 <button class="agenda-inline-btn agenda-toggle-host" type="button">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#3A3247" viewBox="0 0 24 24">
@@ -100,9 +118,6 @@ export function setupAgendaSection(sectionElement: HTMLElement): void {
                     Add description
                 </button>
             </div>
-
-            <input   class="agenda-slot-host agenda-collapsible-field hidden" type="text" placeholder="Host or Artist name" />
-            <textarea class="agenda-slot-desc agenda-collapsible-field hidden" rows="3"   placeholder="Describe this slot..."></textarea>
         `;
 
         /* Title validation */
@@ -122,66 +137,55 @@ export function setupAgendaSection(sectionElement: HTMLElement): void {
             }
         });
 
-        /* Time buttons */
+        /* Time buttons — using shared helper */
         card.querySelectorAll<HTMLButtonElement>(".agenda-time-btn").forEach(btn => {
-            const targetId   = btn.dataset.target!;
-            const hiddenInput = card.querySelector(`#${targetId}`) as HTMLInputElement;
-            const labelEl    = btn.querySelector(".agenda-time-label") as HTMLElement;
-
-            btn.addEventListener("click", () => {
-                hiddenInput.type          = "time";
-                hiddenInput.style.display = "block";
-                hiddenInput.focus();
-            });
-
-            hiddenInput.addEventListener("change", () => {
-                const val = hiddenInput.value;
-                if (val) {
-                    const [h, m] = val.split(":").map(Number);
-                    const ampm   = h >= 12 ? "PM" : "AM";
-                    labelEl.textContent = `${((h % 12) || 12)}:${String(m).padStart(2, "0")} ${ampm}`;
-                    btn.classList.add("has-value");
-                }
-                hiddenInput.style.display = "none";
-                hiddenInput.type          = "text";
-            });
-
-            hiddenInput.addEventListener("blur", () => {
-                hiddenInput.style.display = "none";
-                hiddenInput.type          = "text";
-            });
+            const targetId  = btn.dataset.target!;
+            const inputEl   = card.querySelector(`#${targetId}`) as HTMLInputElement;
+            const labelEl   = btn.querySelector(".agenda-time-label") as HTMLElement;
+            setupTimePicker(btn, inputEl, labelEl);
         });
 
         /* Trash */
         card.querySelector(".agenda-slot-trash")!.addEventListener("click", () => card.remove());
 
+        /* Host toggle */
         const hostInput = card.querySelector(".agenda-slot-host") as HTMLInputElement;
         const hostBtn   = card.querySelector(".agenda-toggle-host") as HTMLButtonElement;
+        const actionsEl = card.querySelector(".agenda-inline-actions") as HTMLElement;
+
         hostBtn.addEventListener("click", () => {
-            const isHidden = hostInput.classList.toggle("hidden");
-            hostBtn.classList.toggle("active", !isHidden);
-            if (!isHidden) hostInput.focus();
+            const isVisible = hostInput.style.display === "block";
+            hostInput.style.display = isVisible ? "none" : "block";
+            actionsEl.insertAdjacentElement("beforebegin", hostInput);
+            hostBtn.classList.toggle("active", !isVisible);
+            if (!isVisible) hostInput.focus();
             else hostInput.value = "";
         });
 
-        /* Description toggle — button disappears, field appears permanently above host */
-        const descInput = card.querySelector(".agenda-slot-desc") as HTMLTextAreaElement;
-        const descBtn   = card.querySelector(".agenda-toggle-desc") as HTMLButtonElement;
+        /* Description toggle */
+        const descWrapper = card.querySelector(".agenda-desc-wrapper") as HTMLElement;
+        const descInput   = card.querySelector(".agenda-slot-desc") as HTMLTextAreaElement;
+        const descBtn     = card.querySelector(".agenda-toggle-desc") as HTMLButtonElement;
+        const descRemove  = card.querySelector(".agenda-desc-remove") as HTMLButtonElement;
+
         descBtn.addEventListener("click", () => {
-            descBtn.classList.add("hidden");
-            descInput.classList.remove("hidden");
-            // Always move descInput before hostInput in the DOM
-            hostInput.insertAdjacentElement("beforebegin", descInput);
+            descBtn.style.display     = "none";
+            descWrapper.style.display = "block";
+            hostInput.insertAdjacentElement("beforebegin", descWrapper);
             descInput.focus();
         });
-        
+
+        descRemove.addEventListener("click", () => {
+            descWrapper.style.display = "none";
+            descInput.value           = "";
+            descBtn.style.display     = "";
+            actionsEl.insertAdjacentElement("beforebegin", descWrapper);
+        });
+
         slotListEl.appendChild(card);
     }
 
-    /* ── Wire up + Add slot button ── */
     addSlotBtn.addEventListener("click", () => addSlot());
-
-    /* ── Init with one slot ── */
     addSlot();
 }
 

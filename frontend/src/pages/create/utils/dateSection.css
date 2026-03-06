@@ -138,3 +138,51 @@
     flex-shrink: 0;
     color: #3659e3;
 }
+
+/* ── Date section time picker buttons ── */
+.date-time-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border: 1.5px solid #d8d6e0;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    color: #585163;
+    cursor: pointer;
+    font-family: inherit;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    position: relative;
+    width: 100%;
+}
+
+.date-time-btn svg {
+    flex-shrink: 0;
+    color: #6f7287;
+}
+
+.date-time-btn:hover {
+    border-color: #3659e3;
+}
+
+.date-time-btn.has-value {
+    border-color: #3659e3;
+    color: #1e0a3c;
+    font-weight: 600;
+}
+
+.date-time-btn.has-value svg {
+    color: #3659e3;
+}
+
+.date-time-input {
+    position: absolute;
+    opacity: 0;
+    width: 1px;
+    height: 1px;
+    pointer-events: none;
+    border: none !important;
+    padding: 0 !important;
+}

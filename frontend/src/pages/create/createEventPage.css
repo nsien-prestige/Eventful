@@ -376,12 +376,12 @@ input:focus, textarea:focus {
 
 .agenda-slot-card {
     border: 1.5px solid #e5e7eb;
-    border-radius: 10px;
-    padding: 20px;
-    background: #fafafa;
+    border-radius: 8px;
+    padding: 24px;
+    background: #fff;
     display: flex;
     flex-direction: column;
-    gap: 0;
+    gap: 14px;
 }
 
 .agenda-slot-header {

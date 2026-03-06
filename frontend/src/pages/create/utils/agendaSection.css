@@ -55,11 +55,18 @@
 .agenda-slot-card {
     border: 1.5px solid #e5e7eb;
     border-radius: 8px;
-    padding: 20px;
+    padding: 24px;
     background: #fff;
     display: flex;
     flex-direction: column;
     gap: 16px;
+}
+
+/* ── Title wrapper: stacks title row + error vertically ── */
+.agenda-title-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
 /* Top row: title field + trash icon */
@@ -83,12 +90,6 @@
     box-shadow: 0 0 0 3px rgba(54, 89, 227, 0.1);
 }
 
-.agenda-slot-title-field.has-error,
-.agenda-slot-title-input.has-error ~ * {
-    border-color: #d63636;
-}
-
-/* When the input inside has error, style the wrapper */
 .agenda-slot-title-field:has(.has-error) {
     border-color: #d63636;
 }
@@ -136,8 +137,8 @@
     display: block;
     font-size: 0.75rem;
     color: #d63636;
-    margin-top: 6px;
     font-weight: 500;
+    padding-left: 2px;
 }
 
 .agenda-slot-error.hidden {
@@ -248,11 +249,6 @@
     color: #1e0a3c;
 }
 
-.agenda-inline-btn.active {
-    color: #3659e3;
-    background: #eef1ff;
-}
-
 /* ── Collapsible fields (host input, desc textarea) ── */
 .agenda-collapsible-field {
     width: 100%;
@@ -296,4 +292,35 @@
 
 .agenda-add-slot-btn:hover {
     background: #e9eaec;
+}
+
+/* ── Description field header (label + X) ── */
+.agenda-desc-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+}
+
+.agenda-desc-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #6f7287;
+}
+
+.agenda-desc-remove {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 2px;
+    border-radius: 3px;
+    color: #9ca3af;
+    display: flex;
+    align-items: center;
+    transition: color 0.15s ease, background 0.15s ease;
+}
+
+.agenda-desc-remove:hover {
+    color: #d63636;
+    background: #fff1f0;
 }

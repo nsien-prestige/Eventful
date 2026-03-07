@@ -45,33 +45,38 @@ export function renderDateSection(): string {
                 <div class="section-actions">
                     <div class="section-status" id="dateStatus">
                         <svg viewBox="0 0 24 24" class="check-icon">
-                            <path d="M20 6L9 17L4 12" />
+                            <path d="M20 6L9 17l-5-5"></path>
                         </svg>
                     </div>
+                    <button class="section-expand-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
+                        </svg>
+                    </button>
                 </div>
             </div>
 
-            <div class="section-content hidden" id="dateContent">
+            <div class="section-body">
 
-                <!-- LOCATION TYPE TOGGLE -->
+                <!-- LOCATION MODE PILLS -->
                 <div class="field-group">
                     <label>Location type</label>
-                    <div class="location-type-toggle">
+                    <div class="loc-pills">
                         <button class="loc-pill active" data-mode="in-person" type="button">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z" />
                             </svg>
-                            In-person
+                            Venue
                         </button>
                         <button class="loc-pill" data-mode="online" type="button">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253" />
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5a17.92 17.92 0 0 1-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418" />
                             </svg>
                             Online
                         </button>
                         <button class="loc-pill" data-mode="tbd" type="button">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z" />
                             </svg>
                             TBD
@@ -87,52 +92,61 @@ export function renderDateSection(): string {
                             <input type="text" id="eventDate" placeholder=" " />
                             <label for="eventDate">Event Date</label>
                         </div>
-                        <button class="date-time-btn" data-target="startTime" type="button">
+                        <button class="time-picker-btn" data-target="startTime" type="button">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                             </svg>
-                            <span class="date-time-label" id="startTimeLabel">Start Time</span>
-                            <input class="date-time-input" id="startTime" type="text" placeholder="Start Time" readonly />
+                            <span class="time-picker-label" id="startTimeLabel">Start Time</span>
+                            <input class="time-picker-input" id="startTime" type="text" />
                         </button>
-                        <button class="date-time-btn" data-target="endTime" type="button">
+                        <button class="time-picker-btn" data-target="endTime" type="button">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                             </svg>
-                            <span class="date-time-label" id="endTimeLabel">End Time</span>
-                            <input class="date-time-input" id="endTime" type="text" placeholder="End Time" readonly />
+                            <span class="time-picker-label" id="endTimeLabel">End Time</span>
+                            <input class="time-picker-input" id="endTime" type="text" />
                         </button>
                     </div>
                 </div>
 
-                <!-- IN-PERSON: VENUE -->
-                <div id="venueBlock" class="field-group">
-                    <label for="locationSearch">Venue <span class="field-required">*</span></label>
-                    <p class="field-help">Search for an address or venue name.</p>
-                    <div class="floating-field" style="margin-bottom: 0">
-                        <input type="text" id="locationSearch" placeholder=" " />
-                        <label for="locationSearch">Search address or venue</label>
+                <!-- VENUE BLOCK -->
+                <div class="field-group" id="venueBlock">
+                    <label for="locationSearch">Event location <span class="field-required">*</span></label>
+                    <div class="location-search-wrapper">
+                        <input
+                            type="text"
+                            id="locationSearch"
+                            placeholder="Search for a venue or address"
+                            autocomplete="off"
+                        />
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="search-icon">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                        </svg>
                     </div>
-                    <div id="map" class="hidden"></div>
                 </div>
 
-                <!-- ONLINE: MEETING LINK -->
-                <div id="onlineBlock" class="field-group hidden">
-                    <label for="meetingLink">Meeting link <span class="field-required">*</span></label>
-                    <p class="field-help">Add a Zoom, Google Meet, or other video link.</p>
+                <!-- ONLINE BLOCK -->
+                <div class="field-group hidden" id="onlineBlock">
+                    <label for="onlineUrl">Online event URL</label>
                     <input
                         type="url"
-                        id="meetingLink"
-                        class="field-input"
+                        id="onlineUrl"
                         placeholder="https://zoom.us/j/..."
+                        autocomplete="off"
                     />
+                    <p class="field-hint">
+                        Attendees will be notified once confirmed.
+                    </p>
                 </div>
 
-                <!-- TBD NOTE -->
-                <div id="tbdBlock" class="tbd-note hidden">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="m11.25 11.25.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
-                    </svg>
-                    <p>Location is to be determined. Attendees will be notified once confirmed.</p>
+                <!-- TBD BLOCK -->
+                <div class="field-group hidden" id="tbdBlock">
+                    <p class="tbd-notice">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 0 1 1.063.852l-.708 2.836a.75.75 0 0 0 1.063.853l.041-.021M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9-3.75h.008v.008H12V8.25Z" />
+                        </svg>
+                        Attendees will be notified once confirmed.
+                    </p>
                 </div>
 
             </div>
@@ -165,10 +179,10 @@ export function setupDateSection(): void {
     });
 
     /* Wire up start/end time buttons using shared helper */
-    document.querySelectorAll<HTMLButtonElement>(".date-time-btn").forEach(btn => {
+    document.querySelectorAll<HTMLButtonElement>(".time-picker-btn").forEach(btn => {
         const targetId = btn.dataset.target!;
         const inputEl  = document.getElementById(targetId) as HTMLInputElement;
-        const labelEl  = btn.querySelector(".date-time-label") as HTMLElement;
+        const labelEl  = btn.querySelector(".time-picker-label") as HTMLElement;
         setupTimePicker(btn, inputEl, labelEl);
     });
 }

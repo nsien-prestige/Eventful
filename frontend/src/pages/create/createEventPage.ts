@@ -91,7 +91,7 @@ export function renderCreateEventPage(): void {
 
     setupImageUpload();
     setupTitleSection();
-    setupDateSection();
+    setupDateSection();  // This now sets up custom time pickers
 
     // Title: no custom onExpand needed
     setupCollapsible("titleHeader", "titleContent", "titleToggle", "titleSubtext");
@@ -99,7 +99,7 @@ export function renderCreateEventPage(): void {
     // Date: restoreDateHeader swaps preview → default when re-opened
     setupCollapsible("dateHeader", "dateContent", "dateToggle", "dateSubtext", restoreDateHeader);
 
-    initDatePickers();
+    initDatePickers();  // This now only initializes the DATE picker (not time)
     loadGoogleMaps();
     initSectionProgress();
     setupAddSectionLogic();

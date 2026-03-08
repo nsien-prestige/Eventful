@@ -3,20 +3,18 @@ import type { Instance } from "flatpickr/dist/types/instance";
 import "flatpickr/dist/flatpickr.css";
 import "./DatePicker.css";
 
-let startPicker: Instance;
-let endPicker: Instance;
 let datePicker: Instance;
 
+/**
+ * Initialize ONLY the date picker
+ * Time pickers are now handled by the custom timePickerHelper
+ */
 export function initDatePickers() {
-
   const dateInput = document.getElementById("eventDate") as HTMLInputElement;
-  const startInput = document.getElementById("startTime") as HTMLInputElement;
-  const endInput = document.getElementById("endTime") as HTMLInputElement;
 
-  if (!dateInput || !startInput || !endInput) return;
+  if (!dateInput) return;
 
   /* ---------------- DATE PICKER ---------------- */
-
   datePicker = flatpickr(dateInput, {
     altInput: true,
     altFormat: "D, M j, Y", // Wed, Mar 5, 2026
@@ -27,55 +25,37 @@ export function initDatePickers() {
     monthSelectorType: "static",
     onChange: () => applyFloatingState(dateInput)
   });
-
-  /* ---------------- START TIME ---------------- */
-
-  startPicker = flatpickr(startInput, {
-    enableTime: true,
-    noCalendar: true,
-    altInput: true,
-    altFormat: "h:i K", // 5:30 PM
-    dateFormat: "H:i",
-    time_24hr: false,
-    onChange: () => applyFloatingState(startInput)                  
-  });
-
-  /* ---------------- END TIME ---------------- */
-
-  endPicker = flatpickr(endInput, {
-    enableTime: true,
-    noCalendar: true,
-    altInput: true,
-    altFormat: "h:i K",
-    dateFormat: "H:i",
-    time_24hr: false,
-    onChange: () => applyFloatingState(endInput)
-  });
 }
 
-
-/* ---------------- CLEAN VALUE RETURN ---------------- */
-
+/**
+ * Get event date and time values
+ * Now gets time from the custom time picker inputs
+ */
 export function getEventDateTimeValues() {
+  const startTimeInput = document.getElementById("startTime") as HTMLInputElement;
+  const endTimeInput = document.getElementById("endTime") as HTMLInputElement;
 
-  if (
-    !datePicker?.selectedDates.length ||
-    !startPicker?.selectedDates.length ||
-    !endPicker?.selectedDates.length
-  ) {
-    alert("Please select date and time.");
+  if (!datePicker?.selectedDates.length) {
+    alert("Please select an event date.");
+    return null;
+  }
+
+  if (!startTimeInput?.value || !endTimeInput?.value) {
+    alert("Please select start and end times.");
     return null;
   }
 
   const date = datePicker.selectedDates[0];
-  const startTime = startPicker.selectedDates[0];
-  const endTime = endPicker.selectedDates[0];
+  
+  // Parse time values (format: "HH:mm")
+  const [startHour, startMin] = startTimeInput.value.split(":").map(Number);
+  const [endHour, endMin] = endTimeInput.value.split(":").map(Number);
 
   const start = new Date(date);
-  start.setHours(startTime.getHours(), startTime.getMinutes(), 0, 0);
+  start.setHours(startHour, startMin, 0, 0);
 
   const end = new Date(date);
-  end.setHours(endTime.getHours(), endTime.getMinutes(), 0, 0);
+  end.setHours(endHour, endMin, 0, 0);
 
   return {
     dateISO: start.toISOString(),

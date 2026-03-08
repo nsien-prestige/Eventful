@@ -88,23 +88,28 @@ export function renderDateSection(): string {
                 <div class="field-group">
                     <label>Date and time <span class="field-required">*</span></label>
                     <div class="date-time-grid">
+                        <!-- Event Date (still using Flatpickr) -->
                         <div class="floating-field">
                             <input type="text" id="eventDate" placeholder=" " />
                             <label for="eventDate">Event Date</label>
                         </div>
+                        
+                        <!-- Start Time (custom picker) -->
                         <button class="time-picker-btn" data-target="startTime" type="button">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                             </svg>
                             <span class="time-picker-label" id="startTimeLabel">Start Time</span>
-                            <input class="time-picker-input" id="startTime" type="text" />
+                            <input class="time-picker-input" id="startTime" type="hidden" />
                         </button>
+
+                        <!-- End Time (custom picker) -->
                         <button class="time-picker-btn" data-target="endTime" type="button">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                             </svg>
                             <span class="time-picker-label" id="endTimeLabel">End Time</span>
-                            <input class="time-picker-input" id="endTime" type="text" />
+                            <input class="time-picker-input" id="endTime" type="hidden" />
                         </button>
                     </div>
                 </div>
@@ -178,12 +183,15 @@ export function setupDateSection(): void {
         });
     });
 
-    /* Wire up start/end time buttons using shared helper */
+    /* Setup custom time pickers */
     document.querySelectorAll<HTMLButtonElement>(".time-picker-btn").forEach(btn => {
         const targetId = btn.dataset.target!;
         const inputEl  = document.getElementById(targetId) as HTMLInputElement;
         const labelEl  = btn.querySelector(".time-picker-label") as HTMLElement;
-        setupTimePicker(btn, inputEl, labelEl);
+        
+        setupTimePicker(btn, inputEl, labelEl, () => {
+            updateDatePreview();
+        });
     });
 }
 
@@ -196,6 +204,7 @@ function getFlatpickrDisplayValue(inputId: string): string {
     const original = document.getElementById(inputId) as HTMLInputElement | null;
     if (!original) return "";
 
+    // Check for Flatpickr's alt input
     const sibling = original.nextElementSibling as HTMLInputElement | null;
     if (sibling && sibling.tagName === "INPUT" && sibling.value) {
         return sibling.value;
@@ -215,15 +224,16 @@ export function updateDatePreview(): void {
     const defaultHeader = document.getElementById("dateDefaultHeader")!;
     const previewHeader = document.getElementById("datePreviewHeader")!;
 
-    const dateStr  = getFlatpickrDisplayValue("eventDate");
-    const startEl  = document.getElementById("startTimeLabel") as HTMLElement;
-    const endEl    = document.getElementById("endTimeLabel") as HTMLElement;
+    const dateStr = getFlatpickrDisplayValue("eventDate");
+    
+    // Get time labels (they now contain the formatted display text)
+    const startEl = document.getElementById("startTimeLabel") as HTMLElement;
+    const endEl = document.getElementById("endTimeLabel") as HTMLElement;
 
-    // Use the label text if it has been updated by the picker, else fall back to raw input
     const startStr = startEl?.textContent !== "Start Time" ? startEl.textContent ?? "" : "";
-    const endStr   = endEl?.textContent   !== "End Time"   ? endEl.textContent   ?? "" : "";
+    const endStr = endEl?.textContent !== "End Time" ? endEl.textContent ?? "" : "";
 
-    const timeRange   = [startStr, endStr].filter(Boolean).join(" - ");
+    const timeRange = [startStr, endStr].filter(Boolean).join(" - ");
     const datetimeStr = [dateStr, timeRange].filter(Boolean).join(" · ");
 
     document.getElementById("datePreviewDatetimeText")!.textContent = datetimeStr || "—";
@@ -236,8 +246,10 @@ export function updateDatePreview(): void {
 
     document.getElementById("datePreviewLocationText")!.textContent = locationStr;
 
-    defaultHeader.classList.add("hidden");
-    previewHeader.classList.remove("hidden");
+    if (dateStr || startStr || endStr) {
+        defaultHeader.classList.add("hidden");
+        previewHeader.classList.remove("hidden");
+    }
 }
 
 export function restoreDateHeader(): void {

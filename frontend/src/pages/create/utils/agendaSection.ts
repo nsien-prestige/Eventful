@@ -72,19 +72,19 @@ export function setupAgendaSection(sectionElement: HTMLElement): void {
             </div>
 
             <div class="agenda-time-row">
-                <button class="agenda-time-btn" data-target="slotStart_${slotId}" type="button">
+                <button class="time-picker-btn" data-target="slotStart_${slotId}" type="button">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                     </svg>
-                    <span class="agenda-time-label" id="startLabel_${slotId}">Start time</span>
-                    <input class="agenda-time-input agenda-slot-start" id="slotStart_${slotId}" type="text" placeholder="Start time" readonly />
+                    <span class="time-picker-label" id="startLabel_${slotId}">Start time</span>
+                    <input class="time-picker-input" agenda-slot-start" id="slotStart_${slotId}" type="text" placeholder="Start time" readonly />
                 </button>
-                <button class="agenda-time-btn" data-target="slotEnd_${slotId}" type="button">
+                <button class="time-picker-btn" data-target="slotEnd_${slotId}" type="button">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                     </svg>
-                    <span class="agenda-time-label" id="endLabel_${slotId}">End time</span>
-                    <input class="agenda-time-input agenda-slot-end" id="slotEnd_${slotId}" type="text" placeholder="End time" readonly />
+                    <span class="time-picker-label" id="endLabel_${slotId}">End time</span>
+                    <input class="time-picker-input agenda-slot-end" id="slotEnd_${slotId}" type="text" placeholder="End time" readonly />
                 </button>
             </div>
 

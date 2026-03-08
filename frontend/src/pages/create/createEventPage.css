@@ -679,3 +679,143 @@ input:focus, textarea:focus {
 .field-select option[value=""][disabled] {
     color: #aaa8b8;
 }
+
+/* ===============================================
+   LOCATION PILLS - ADD THIS TO createEventPage.css
+   =============================================== */
+
+.loc-pills {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.loc-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border: 1.5px solid #d8d6e0;
+    border-radius: 8px;
+    background: #fff;
+    font-size: 14px;
+    font-weight: 500;
+    color: #585163;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.loc-pill svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.loc-pill:hover {
+    border-color: #3659e3;
+    background: #f3f4ff;
+}
+
+/* ACTIVE STATE - BLUE */
+.loc-pill.active {
+    border-color: #3659e3;
+    background: #3659e3;
+    color: #fff;
+    box-shadow: 0 4px 12px rgba(54, 89, 227, 0.25);
+}
+
+.loc-pill.active svg {
+    color: #fff;
+}
+
+/* ===============================================
+   ADD THIS TO createEventPage.css
+   (or replace existing .field-group styles)
+   =============================================== */
+
+/* Field groups */
+.field-group {
+    margin-bottom: 32px;
+}
+
+.field-group:last-child {
+    margin-bottom: 0;
+}
+
+.field-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #39364f;
+    margin-bottom: 8px;
+}
+
+.field-required {
+    color: #d63636;
+    margin-left: 2px;
+}
+
+/* Section body spacing */
+.section-body {
+    margin-top: 32px;
+}
+
+/* Date/time grid layout */
+.date-time-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 12px;
+    align-items: start;
+}
+
+@media (max-width: 768px) {
+    .date-time-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ===============================================
+   ADD THIS TO createEventPage.css
+   (or replace existing .field-group styles)
+   =============================================== */
+
+/* Field groups */
+.field-group {
+    margin-bottom: 32px;
+}
+
+.field-group:last-child {
+    margin-bottom: 0;
+}
+
+.field-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 600;
+    color: #39364f;
+    margin-bottom: 8px;
+}
+
+.field-required {
+    color: #d63636;
+    margin-left: 2px;
+}
+
+/* Section body spacing */
+.section-body {
+    margin-top: 32px;
+}
+
+/* Date/time grid layout */
+.date-time-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 12px;
+    align-items: start;
+}
+
+@media (max-width: 768px) {
+    .date-time-grid {
+        grid-template-columns: 1fr;
+    }
+}

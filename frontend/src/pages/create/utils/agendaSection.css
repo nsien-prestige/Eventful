@@ -67,7 +67,6 @@
 .agenda-title-wrapper {
     display: flex;
     flex-direction: column;
-    gap: 16px;
 }
 
 .agenda-slot-top {

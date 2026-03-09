@@ -819,3 +819,43 @@ input:focus, textarea:focus {
         grid-template-columns: 1fr;
     }
 }
+
+/* ===============================================
+   SECTION EXPAND/COLLAPSE BUTTON - EVENTBRITE STYLE
+   Add this to createEventPage.css
+   =============================================== */
+
+/* Section actions container */
+.section-actions {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+/* Expand/collapse button - Rounded square with background */
+.section-expand-btn {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: none;
+    background: #f3f4f6;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.section-expand-btn:hover {
+    background: #e5e7eb;
+}
+
+.section-expand-btn:active {
+    transform: scale(0.95);
+}
+
+/* Rotate chevron when section is collapsed */
+.collapsible.collapsed .section-expand-btn svg {
+    transform: rotate(-180deg);
+}

@@ -1,3 +1,5 @@
+// ... (keep all existing imports and constants - EVENT_TYPES, EVENT_CATEGORIES, buildOptions)
+
 const EVENT_TYPES = [
     "Appearance or Signing",
     "Attraction",
@@ -66,6 +68,12 @@ export function renderTitleSection(): string {
                             <path d="M20 6L9 17L4 12" />
                         </svg>
                     </div>
+                    <!-- ADDED: Expand button -->
+                    <button class="section-expand-btn" type="button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#3659e3" viewBox="0 0 24 24" data-testid="sectionPlusIcon">
+                            <path d="M13.333 4h-2.667v6.668H4v2.666h6.666V20h2.667v-6.666H20v-2.666h-6.667z" clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
                 </div>
             </div>
 
@@ -81,31 +89,28 @@ export function renderTitleSection(): string {
                         type="text"
                         id="title"
                         class="field-input"
-                        placeholder="e.g. Tech Networking Meetup 2026"
+                        placeholder="e.g. Winter Music Festival 2026"
+                        autocomplete="off"
                         maxlength="75"
                     />
-                    <span class="field-char-count" id="titleCharCount">0 / 75</span>
                 </div>
 
                 <!-- ORGANIZER -->
                 <div class="field-group">
                     <label for="organizer">Organizer</label>
-                    <p class="field-help">
-                        The name of the person or group hosting this event.
-                    </p>
                     <input
                         type="text"
                         id="organizer"
                         class="field-input"
-                        placeholder="e.g. Lagos Tech Community"
+                        placeholder="Who's hosting this event?"
+                        autocomplete="off"
                     />
                 </div>
 
-                <!-- TYPE + CATEGORY ROW -->
+                <!-- TYPE & CATEGORY ROW -->
                 <div class="field-row">
                     <div class="field-group">
-                        <label for="eventType">Event Type <span class="field-required">*</span></label>
-                        <p class="field-help">Select the type that best fits your event.</p>
+                        <label for="eventType">Type</label>
                         <div class="select-wrapper">
                             <select id="eventType" class="field-select">
                                 <option value="" disabled selected>Select a type</option>
@@ -116,7 +121,6 @@ export function renderTitleSection(): string {
 
                     <div class="field-group">
                         <label for="category">Category <span class="field-required">*</span></label>
-                        <p class="field-help">Help people discover your event.</p>
                         <div class="select-wrapper">
                             <select id="category" class="field-select">
                                 <option value="" disabled selected>Select a category</option>
@@ -130,31 +134,29 @@ export function renderTitleSection(): string {
                 <div class="field-group">
                     <label for="summary">Summary <span class="field-required">*</span></label>
                     <p class="field-help">
-                        A short hook that grabs attention — this appears at the top of your event page.
-                        Keep it under 140 characters.
+                        A short and sweet sentence about your event.
                     </p>
                     <textarea
                         id="summary"
                         class="field-input field-summary"
+                        placeholder="Describe your event in one sentence..."
                         rows="2"
                         maxlength="140"
-                        placeholder="What's this event about in one sentence?"
                     ></textarea>
-                    <span class="field-char-count" id="summaryCharCount">0 / 140</span>
+                    <span class="field-char-count" id="summaryCount">0 / 140</span>
                 </div>
 
                 <!-- DESCRIPTION -->
                 <div class="field-group">
                     <label for="description">Description</label>
                     <p class="field-help">
-                        Give attendees the full picture. Include speakers, sponsors,
-                        what to bring, and anything that makes your event unmissable.
+                        Add more details about the event, schedule, lineup, speakers, etc.
                     </p>
                     <textarea
                         id="description"
                         class="field-input field-description"
+                        placeholder="Tell people what to expect..."
                         rows="6"
-                        placeholder="Describe your event in detail..."
                     ></textarea>
                 </div>
 
@@ -164,20 +166,8 @@ export function renderTitleSection(): string {
 }
 
 export function setupTitleSection(): void {
-    // Live character count — title
-    const titleInput = document.getElementById("title") as HTMLInputElement;
-    const titleCount = document.getElementById("titleCharCount")!;
-
-    titleInput?.addEventListener("input", () => {
-        const len = titleInput.value.length;
-        titleCount.textContent = `${len} / 75`;
-        titleCount.classList.toggle("field-char-count--near", len >= 60);
-        titleCount.classList.toggle("field-char-count--max", len >= 75);
-    });
-
-    // Live character count — summary
     const summaryInput = document.getElementById("summary") as HTMLTextAreaElement;
-    const summaryCount = document.getElementById("summaryCharCount")!;
+    const summaryCount = document.getElementById("summaryCount")!;
 
     summaryInput?.addEventListener("input", () => {
         const len = summaryInput.value.length;
@@ -187,11 +177,6 @@ export function setupTitleSection(): void {
     });
 }
 
-/**
- * Called after the Basic Info section collapses on completion.
- * Replaces the heading with the event title and the subtext with the summary.
- * Adds a small "Edit" affordance so the user knows the header is clickable.
- */
 export function updateTitlePreview(): void {
     const title   = (document.getElementById("title") as HTMLInputElement)?.value.trim();
     const summary = (document.getElementById("summary") as HTMLTextAreaElement)?.value.trim();

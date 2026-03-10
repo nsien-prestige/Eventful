@@ -27,9 +27,13 @@ export function collapseSection(contentId: string, toggleId?: string): void {
         content.style.transition = "";
     }, 350);
 
+    // KEEP BUTTON HIDDEN - Don't show it again after collapsing
     if (toggleId) {
         const toggle = document.getElementById(toggleId);
-        if (toggle) toggle.textContent = "+";
+        if (toggle) {
+            // Keep the button hidden permanently after first expansion
+            // Don't set textContent or make it visible again
+        }
     }
 }
 
@@ -45,6 +49,10 @@ function expandSection(section: CollapsibleSection): void {
     // Hide intro subtext while the form is open
     const subtext = document.getElementById(section.subtextId);
     if (subtext) subtext.style.display = "none";
+    
+    // ADDED: Hide the expand button when section is expanded
+    const toggle = document.getElementById(section.toggleId);
+    if (toggle) toggle.style.display = "none";
 }
 
 function collapseOthers(exceptContentId: string): void {

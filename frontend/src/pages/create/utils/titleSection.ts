@@ -69,7 +69,7 @@ export function renderTitleSection(): string {
                         </svg>
                     </div>
                     <!-- ADDED: Expand button -->
-                    <button class="section-expand-btn" type="button">
+                    <button class="section-expand-btn" id="titleToggle" type="button">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#3659e3" viewBox="0 0 24 24" data-testid="sectionPlusIcon">
                             <path d="M13.333 4h-2.667v6.668H4v2.666h6.666V20h2.667v-6.666H20v-2.666h-6.667z" clip-rule="evenodd"></path>
                         </svg>

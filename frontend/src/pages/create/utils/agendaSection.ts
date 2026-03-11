@@ -12,28 +12,172 @@ export interface AgendaSlot {
 
 let slotCounter = 0;
 
+// NEW: Helper to check if slot is complete
+function isSlotComplete(card: HTMLElement): boolean {
+    const titleInput = card.querySelector(".agenda-slot-title-input") as HTMLInputElement;
+    const startInput = card.querySelector(".agenda-slot-start") as HTMLInputElement;
+    const endInput = card.querySelector(".agenda-slot-end") as HTMLInputElement;
+    
+    return !!(
+        titleInput?.value.trim() &&
+        startInput?.value.trim() &&
+        endInput?.value.trim()
+    );
+}
+
+// Eventbrite-style color pairs: [barColor, backgroundColor]
+const SLOT_COLORS = [
+    { bar: '#FF6B6B', bg: '#FFE5E5' }, // coral red
+    { bar: '#4ECDC4', bg: '#E0F7F5' }, // teal
+    { bar: '#6C5CE7', bg: '#EEEAFD' }, // purple
+    { bar: '#FFA502', bg: '#FFF3E0' }, // orange
+    { bar: '#26DE81', bg: '#E0F9EF' }, // green
+    { bar: '#45AAF2', bg: '#E3F2FD' }, // blue
+    { bar: '#F368E0', bg: '#FCE4EC' }, // pink
+    { bar: '#A29BFE', bg: '#EDE7F6' }, // lavender
+];
+
+// NEW: Collapse slot to preview card
+function collapseSlotToPreview(card: HTMLElement): void {
+    if (!isSlotComplete(card) || card.classList.contains("collapsed")) return;
+    
+    // Get slot data
+    const titleInput = card.querySelector(".agenda-slot-title-input") as HTMLInputElement;
+    const hostInput = card.querySelector(".agenda-slot-host") as HTMLInputElement;
+    const descInput = card.querySelector(".agenda-slot-desc") as HTMLTextAreaElement;
+    
+    const startLabel = card.querySelector("#startLabel_" + card.dataset.slotId) as HTMLElement;
+    const endLabel = card.querySelector("#endLabel_" + card.dataset.slotId) as HTMLElement;
+    
+    const title = titleInput.value.trim();
+    const startTime = startLabel?.textContent || "Start time";
+    const endTime = endLabel?.textContent || "End time";
+    const host = hostInput?.value.trim() || "";
+    const description = descInput?.value.trim() || "";
+    
+    // Get color based on slot index
+    const slotIndex = parseInt(card.dataset.slotId || "0");
+    const colorPair = SLOT_COLORS[slotIndex % SLOT_COLORS.length];
+    
+    // Create preview card with colored bar + matching background
+    const previewCard = document.createElement("div");
+    previewCard.className = "agenda-slot-preview";
+    previewCard.style.background = colorPair.bg; // Set background color
+    
+    previewCard.innerHTML = `
+        <div class="agenda-preview-accent" style="background: ${colorPair.bar};"></div>
+        <div class="agenda-slot-preview-content">
+            <div class="agenda-preview-header">
+                <p class="agenda-slot-preview-time">${startTime} - ${endTime}</p>
+                <h4 class="agenda-slot-preview-title">${title}</h4>
+                ${host ? `<span class="agenda-slot-preview-host-badge">${host}</span>` : ''}
+            </div>
+            ${description ? `<p class="agenda-slot-preview-desc">${description}</p>` : ''}
+        </div>
+        <button class="agenda-slot-edit-btn" type="button" title="Edit slot">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" />
+            </svg>
+        </button>
+    `;
+    
+    // Hide original card content, show preview
+    const titleWrapper = card.querySelector(".agenda-title-wrapper") as HTMLElement;
+    const timeRow = card.querySelector(".agenda-time-row") as HTMLElement;
+    const descWrapper = card.querySelector(".agenda-desc-wrapper") as HTMLElement;
+    const hostInputEl = card.querySelector(".agenda-slot-host") as HTMLElement;
+    const inlineActions = card.querySelector(".agenda-inline-actions") as HTMLElement;
+    
+    if (titleWrapper) titleWrapper.style.display = "none";
+    if (timeRow) timeRow.style.display = "none";
+    if (descWrapper) descWrapper.style.display = "none";
+    if (hostInputEl) hostInputEl.style.display = "none";
+    if (inlineActions) inlineActions.style.display = "none";
+    
+    // Insert preview card
+    card.insertBefore(previewCard, card.firstChild);
+    card.classList.add("collapsed");
+    
+    // Edit button click - expand slot
+    const editBtn = previewCard.querySelector(".agenda-slot-edit-btn") as HTMLButtonElement;
+    editBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        expandSlot(card);
+    });
+}
+
+// NEW: Expand slot from preview
+function expandSlot(card: HTMLElement): void {
+    const previewCard = card.querySelector(".agenda-slot-preview");
+    if (previewCard) previewCard.remove();
+    
+    const titleWrapper = card.querySelector(".agenda-title-wrapper") as HTMLElement;
+    const timeRow = card.querySelector(".agenda-time-row") as HTMLElement;
+    const descWrapper = card.querySelector(".agenda-desc-wrapper") as HTMLElement;
+    const hostInput = card.querySelector(".agenda-slot-host") as HTMLElement;
+    const inlineActions = card.querySelector(".agenda-inline-actions") as HTMLElement;
+    
+    if (titleWrapper) titleWrapper.style.display = "";
+    if (timeRow) timeRow.style.display = "";
+    if (inlineActions) inlineActions.style.display = "";
+    
+    // Restore desc/host if they were visible before
+    if (descWrapper && descWrapper.querySelector("textarea")?.value) {
+        descWrapper.style.display = "block";
+    }
+    if (hostInput && (hostInput as HTMLInputElement).value) {
+        hostInput.style.display = "block";
+    }
+    
+    card.classList.remove("collapsed");
+}
+
+// NEW: Collapse all complete slots
+export function collapseCompleteSlots(): void {
+    document.querySelectorAll(".agenda-slot-card").forEach(card => {
+        collapseSlotToPreview(card as HTMLElement);
+    });
+}
+
 export function renderAgendaSection(): string {
     return `
-        <div class="section-card agenda-section" data-section="agenda">
+        <div class="section-card collapsible agenda-section" data-section="agenda">
 
-            <div class="agenda-top-bar">
-                <h2 class="agenda-title">Agenda</h2>
-                <button class="delete-section-btn agenda-delete-btn" type="button">Delete section</button>
+            <div class="section-header" id="agendaHeader">
+                <div class="section-heading-group">
+                    <h2 class="agenda-title">Agenda</h2>
+                    <p class="section-subtext" id="agendaSubtext">
+                        Add an itinerary, schedule, or lineup to your event. You can include a time,
+                        a description of what will happen, and who will host or perform during the event.
+                        (Ex. Speaker, performer, artist, guide, etc.)
+                    </p>
+                </div>
+
+                <div class="section-actions">
+                    <div class="section-status" id="agendaStatus">
+                        <svg viewBox="0 0 24 24" class="check-icon">
+                            <path d="M20 6L9 17L4 12" />
+                        </svg>
+                    </div>
+                    <button class="section-expand-btn" id="agendaToggle" type="button">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#3659e3" viewBox="0 0 24 24">
+                            <path d="M13.333 4h-2.667v6.668H4v2.666h6.666V20h2.667v-6.666H20v-2.666h-6.667z" clip-rule="evenodd"></path>
+                        </svg>
+                    </button>
+                    <button class="delete-section-btn" type="button" style="margin-left: 12px;">Delete section</button>
+                </div>
             </div>
 
-            <p class="agenda-description">
-                Add an itinerary, schedule, or lineup to your event. You can include a time,
-                a description of what will happen, and who will host or perform during the event.
-                (Ex. Speaker, performer, artist, guide, etc.)
-            </p>
+            <!-- COLLAPSIBLE CONTENT -->
+            <div class="section-content hidden" id="agendaContent">
+                <!-- SLOT LIST -->
+                <div class="agenda-slot-list" id="agendaSlotList"></div>
 
-            <!-- SLOT LIST -->
-            <div class="agenda-slot-list" id="agendaSlotList"></div>
-
-            <!-- ADD SLOT BUTTON -->
-            <button class="agenda-add-slot-btn" id="addAgendaSlotBtn" type="button">
-                + Add slot
-            </button>
+                <!-- ADD SLOT BUTTON -->
+                <button class="agenda-add-slot-btn" id="addAgendaSlotBtn" type="button">
+                    + Add slot
+                </button>
+            </div>
 
         </div>
     `;
@@ -44,6 +188,9 @@ export function setupAgendaSection(sectionElement: HTMLElement): void {
     const addSlotBtn = sectionElement.querySelector("#addAgendaSlotBtn") as HTMLButtonElement;
 
     function addSlot(): void {
+        // FIRST: Collapse all complete slots before adding new one
+        collapseCompleteSlots();
+        
         const slotId = slotCounter++;
         const card   = document.createElement("div");
         card.className      = "agenda-slot-card";
@@ -77,18 +224,18 @@ export function setupAgendaSection(sectionElement: HTMLElement): void {
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                     </svg>
                     <span class="time-picker-label" id="startLabel_${slotId}">Start time</span>
-                    <input class="time-picker-input" agenda-slot-start" id="slotStart_${slotId}" type="text" placeholder="Start time" readonly />
+                    <input class="time-picker-input agenda-slot-start" id="slotStart_${slotId}" type="hidden" />
                 </button>
+                
                 <button class="time-picker-btn agenda-time-btn" data-target="slotEnd_${slotId}" type="button">
                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                     </svg>
                     <span class="time-picker-label" id="endLabel_${slotId}">End time</span>
-                    <input class="time-picker-input agenda-slot-end" id="slotEnd_${slotId}" type="text" placeholder="End time" readonly />
+                    <input class="time-picker-input agenda-slot-end" id="slotEnd_${slotId}" type="hidden" />
                 </button>
             </div>
 
-            <!-- DESC WRAPPER (hidden until button clicked) -->
             <div class="agenda-desc-wrapper" style="display:none">
                 <div class="agenda-desc-header">
                     <span class="agenda-desc-label">Description</span>
@@ -103,7 +250,6 @@ export function setupAgendaSection(sectionElement: HTMLElement): void {
 
             <input class="agenda-slot-host agenda-collapsible-field" style="display:none" type="text" placeholder="Host or Artist name" />
 
-            <!-- INLINE ACTIONS — always at bottom -->
             <div class="agenda-inline-actions">
                 <button class="agenda-inline-btn agenda-toggle-host" type="button">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="#3A3247" viewBox="0 0 24 24">
@@ -120,7 +266,6 @@ export function setupAgendaSection(sectionElement: HTMLElement): void {
             </div>
         `;
 
-        /* Title validation */
         const titleInput = card.querySelector(".agenda-slot-title-input") as HTMLInputElement;
         const errorEl    = card.querySelector(`#slotError_${slotId}`) as HTMLElement;
 
@@ -137,18 +282,16 @@ export function setupAgendaSection(sectionElement: HTMLElement): void {
             }
         });
 
-        /* Time buttons — using shared helper */
-        card.querySelectorAll<HTMLButtonElement>(".agenda-time-btn").forEach(btn => {
+        card.querySelectorAll<HTMLButtonElement>(".time-picker-btn").forEach(btn => {
             const targetId  = btn.dataset.target!;
             const inputEl   = card.querySelector(`#${targetId}`) as HTMLInputElement;
-            const labelEl   = btn.querySelector(".agenda-time-label") as HTMLElement;
+            const labelEl   = btn.querySelector(".time-picker-label") as HTMLElement;
+            
             setupTimePicker(btn, inputEl, labelEl);
         });
 
-        /* Trash */
         card.querySelector(".agenda-slot-trash")!.addEventListener("click", () => card.remove());
 
-        /* Host toggle */
         const hostInput = card.querySelector(".agenda-slot-host") as HTMLInputElement;
         const hostBtn   = card.querySelector(".agenda-toggle-host") as HTMLButtonElement;
         const actionsEl = card.querySelector(".agenda-inline-actions") as HTMLElement;
@@ -162,7 +305,6 @@ export function setupAgendaSection(sectionElement: HTMLElement): void {
             else hostInput.value = "";
         });
 
-        /* Description toggle */
         const descWrapper = card.querySelector(".agenda-desc-wrapper") as HTMLElement;
         const descInput   = card.querySelector(".agenda-slot-desc") as HTMLTextAreaElement;
         const descBtn     = card.querySelector(".agenda-toggle-desc") as HTMLButtonElement;
@@ -185,7 +327,10 @@ export function setupAgendaSection(sectionElement: HTMLElement): void {
         slotListEl.appendChild(card);
     }
 
+    // TRIGGER: + Add slot button
     addSlotBtn.addEventListener("click", () => addSlot());
+    
+    // Initial slot
     addSlot();
 }
 

@@ -2,6 +2,7 @@ import { collapseSection } from "./collapsible";
 import { updateTitlePreview } from "./titleSection";
 import { updateDatePreview, getDateLocationMode } from "./dateSection";
 
+// EXPORTED so agendaCollapsible can use it
 export function launchConfetti(target: HTMLElement): void {
     const rect = target.getBoundingClientRect();
 

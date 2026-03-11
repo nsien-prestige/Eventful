@@ -1,3 +1,5 @@
+import { collapseCompleteSlots } from "./agendaSection";
+
 interface CollapsibleSection {
     headerId:  string;
     contentId: string;
@@ -56,6 +58,13 @@ function expandSection(section: CollapsibleSection): void {
 }
 
 function collapseOthers(exceptContentId: string): void {
+    // ADDED: Collapse all completed agenda slots when switching sections
+    try {
+        collapseCompleteSlots();
+    } catch (e) {
+        // Agenda section might not be loaded yet
+    }
+    
     registry.forEach(sec => {
         if (sec.contentId === exceptContentId) return;
 

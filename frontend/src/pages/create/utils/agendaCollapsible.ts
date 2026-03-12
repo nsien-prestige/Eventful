@@ -1,24 +1,8 @@
-/**
- * CUSTOM AGENDA SECTION COLLAPSIBLE - EVENTBRITE STYLE
- * 
- * Behavior:
- * 1. Auto-expand when "Add" button is clicked
- * 2. Auto-collapse when ALL slots complete + click outside
- * 3. Show preview header with completed slots when collapsed
- * 4. Green tick ONLY visible when collapsed
- * 5. Delete button ONLY visible when expanded
- * 6. Allow re-expansion by clicking section header
- * 7. Don't collapse if ANY slot is incomplete
- */
-
 import { launchConfetti } from "./sectionProgress";
 
 let isAgendaSectionComplete = false;
 let hasShownConfetti = false;
 
-/**
- * Check if ALL slots are complete (or at least one is complete for green tick)
- */
 export function checkAgendaCompletion(): { allComplete: boolean; hasCompleteSlot: boolean } {
     const slots = document.querySelectorAll(".agenda-slot-card");
     
@@ -46,9 +30,6 @@ export function checkAgendaCompletion(): { allComplete: boolean; hasCompleteSlot
     };
 }
 
-/**
- * Create collapsed preview header showing all completed slots
- */
 function createPreviewHeader(): string {
     const slots = document.querySelectorAll(".agenda-slot-card");
     const completedSlots: string[] = [];
@@ -106,10 +87,6 @@ function createPreviewHeader(): string {
     
     return completedSlots.join("");
 }
-
-/**
- * Auto-expand agenda section (called when Add button is clicked)
- */
 export function expandAgendaSection(): void {
     const header = document.getElementById("agendaHeader");
     const content = document.getElementById("agendaContent");
@@ -133,13 +110,9 @@ export function expandAgendaSection(): void {
     // SHOW delete button when expanded
     if (deleteBtn) deleteBtn.style.display = "block";
     
-    // Expand the section
     content.classList.remove("hidden");
 }
 
-/**
- * Collapse agenda section with preview header
- */
 export function collapseAgendaSection(): void {
     const header = document.getElementById("agendaHeader");
     const content = document.getElementById("agendaContent");

@@ -257,3 +257,73 @@ export function restoreDateHeader(): void {
     document.getElementById("dateDefaultHeader")?.classList.remove("hidden");
     document.getElementById("datePreviewHeader")?.classList.add("hidden");
 }
+
+export function getDateData() {
+    const locationSearch = document.getElementById("locationSearch") as HTMLInputElement;
+    const onlineUrl = document.getElementById("onlineUrl") as HTMLInputElement;
+    
+    const mode = getDateLocationMode();
+    
+    // Get time values from the label text (which the time picker updates)
+    const startTimeLabel = document.getElementById("startTimeLabel") as HTMLElement;
+    const endTimeLabel = document.getElementById("endTimeLabel") as HTMLElement;
+    
+    const startTime = startTimeLabel?.textContent !== "Start Time" ? startTimeLabel.textContent : "";
+    const endTime = endTimeLabel?.textContent !== "End Time" ? endTimeLabel.textContent : "";
+    
+    // Get date value (Flatpickr creates a sibling input with display value)
+    const dateValue = getFlatpickrDisplayValue("eventDate");
+    
+    return {
+        // Combine date + time into ISO strings
+        date: combineDateAndTime(dateValue, startTime || ""),
+        endDate: combineDateAndTime(dateValue, endTime || ""),
+        
+        // Location details
+        locationType: mode,  // 'in-person' | 'online' | 'tbd'
+        venueAddress: mode === 'in-person' ? locationSearch?.value.trim() : undefined,
+        meetingLink: mode === 'online' ? onlineUrl?.value.trim() : undefined,
+        
+        // Coordinates (TODO: extract from Google Maps API)
+        latitude: undefined,
+        longitude: undefined,
+    };
+}
+
+/**
+ * Helper function to combine date and time into ISO string
+ */
+function combineDateAndTime(dateStr: string, timeStr: string): string {
+    if (!dateStr) return "";
+    
+    // Parse date (format: "December 15, 2024" or similar)
+    const dateParts = new Date(dateStr);
+    
+    if (!timeStr || timeStr === "Start Time" || timeStr === "End Time") {
+        // No time specified, use midnight
+        return dateParts.toISOString();
+    }
+    
+    // Parse time (format: "09:00 AM" or "2:30 PM")
+    const timeMatch = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+    
+    if (!timeMatch) {
+        return dateParts.toISOString();
+    }
+    
+    let hours = parseInt(timeMatch[1]);
+    const minutes = parseInt(timeMatch[2]);
+    const meridiem = timeMatch[3].toUpperCase();
+    
+    // Convert to 24-hour format
+    if (meridiem === "PM" && hours !== 12) {
+        hours += 12;
+    } else if (meridiem === "AM" && hours === 12) {
+        hours = 0;
+    }
+    
+    // Set the time
+    dateParts.setHours(hours, minutes, 0, 0);
+    
+    return dateParts.toISOString();
+}

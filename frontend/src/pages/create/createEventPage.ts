@@ -11,9 +11,15 @@ import { loadGoogleMaps }                                from "./utils/googleMap
 import { initSectionProgress }                           from "./utils/sectionProgress";
 import { setupAddSectionLogic }                          from "./utils/addSections";
 
+import { createEvent } from "../../api/createEvent.api";
+import { showMessage } from "../../components/notify/notify";
+import { navigate } from "../../router";
+
 export { getAgendaData }  from "./utils/agendaSection";
 export { getTitleData }   from "./utils/titleSection";
 export { getImageData }   from "./utils/imageUpload";
+export { getDateData } from "./utils/dateSection"
+export { getPricingData } from "./utils/pricingSection";
 
 export function renderCreateEventPage(): void {
     const app = document.getElementById("app")!;
@@ -106,44 +112,53 @@ export function renderCreateEventPage(): void {
 
     setupImageUpload();
     setupTitleSection();
-    setupDateSection();  // This now sets up custom time pickers
+    setupDateSection();  
 
-    // Title: no custom onExpand needed
     setupCollapsible("titleHeader", "titleContent", "titleToggle", "titleSubtext");
 
-    // Date: restoreDateHeader swaps preview → default when re-opened
     setupCollapsible("dateHeader", "dateContent", "dateToggle", "dateSubtext", restoreDateHeader);
 
-    initDatePickers();  // This now only initializes the DATE picker (not time)
+    initDatePickers();  
     loadGoogleMaps();
     initSectionProgress();
     setupAddSectionLogic();
-    setupCreateButton();  // Setup Create Event button
+    setupCreateButton(); 
 }
 
-/**
- * Setup Create Event button with loading state
- */
+
 function setupCreateButton(): void {
     const createBtn = document.getElementById("createEventBtn");
     
     if (!createBtn) return;
     
-    createBtn.addEventListener("click", (e) => {
+    createBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         
         // Add loading state
         createBtn.classList.add("loading");
         createBtn.setAttribute("disabled", "true");
         
-        // TODO: Collect and validate form data
-        console.log("Creating event...");
-        
-        // Simulate API call (remove this later)
-        setTimeout(() => {
+        try {
+            // Call API to create event
+            const result = await createEvent();
+            
+            // Success!
+            showMessage("Event created successfully! 🎉", "success");
+            
+            // Navigate to event details or my events page
+            setTimeout(() => {
+                navigate(`/event/${result.publicId}`);
+                // OR: navigate("/my-events");
+            }, 1000);
+            
+        } catch (error: any) {
+            // Error handling
+            console.error("Create event error:", error);
+            showMessage(error.message || "Failed to create event", "error");
+            
+            // Remove loading state on error
             createBtn.classList.remove("loading");
             createBtn.removeAttribute("disabled");
-            alert("Event creation logic will be implemented here!");
-        }, 2000);
+        }
     });
 }

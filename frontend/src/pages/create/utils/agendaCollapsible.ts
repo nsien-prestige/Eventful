@@ -5,13 +5,16 @@
  * 1. Auto-expand when "Add" button is clicked
  * 2. Auto-collapse when ALL slots complete + click outside
  * 3. Show preview header with completed slots when collapsed
- * 4. Allow re-expansion by clicking section header
- * 5. Don't collapse if ANY slot is incomplete
+ * 4. Green tick ONLY visible when collapsed
+ * 5. Delete button ONLY visible when expanded
+ * 6. Allow re-expansion by clicking section header
+ * 7. Don't collapse if ANY slot is incomplete
  */
 
 import { launchConfetti } from "./sectionProgress";
 
 let isAgendaSectionComplete = false;
+let hasShownConfetti = false;
 
 /**
  * Check if ALL slots are complete (or at least one is complete for green tick)
@@ -111,15 +114,24 @@ export function expandAgendaSection(): void {
     const header = document.getElementById("agendaHeader");
     const content = document.getElementById("agendaContent");
     const subtext = document.getElementById("agendaSubtext");
+    const statusEl = document.getElementById("agendaStatus");
+    const deleteBtn = document.getElementById("agendaDeleteBtn");
+    const agendaSection = document.querySelector(".agenda-section");
     
-    if (!content || !header) return;
+    if (!content || !header || !agendaSection) return;
     
-    // Remove preview if it exists
-    const existingPreview = header.querySelector(".agenda-preview-header");
+    // Remove preview container if it exists
+    const existingPreview = agendaSection.querySelector(".agenda-preview-slots-container");
     if (existingPreview) existingPreview.remove();
     
     // Show original subtext
     if (subtext) subtext.style.display = "block";
+    
+    // HIDE green tick when expanded
+    if (statusEl) statusEl.style.display = "none";
+    
+    // SHOW delete button when expanded
+    if (deleteBtn) deleteBtn.style.display = "block";
     
     // Expand the section
     content.classList.remove("hidden");
@@ -132,27 +144,42 @@ export function collapseAgendaSection(): void {
     const header = document.getElementById("agendaHeader");
     const content = document.getElementById("agendaContent");
     const subtext = document.getElementById("agendaSubtext");
+    const statusEl = document.getElementById("agendaStatus");
+    const deleteBtn = document.getElementById("agendaDeleteBtn");
+    const agendaSection = document.querySelector(".agenda-section");
     
-    if (!content || !header || content.classList.contains("hidden")) return;
+    if (!content || !header || !agendaSection || content.classList.contains("hidden")) return;
+    
+    const { hasCompleteSlot } = checkAgendaCompletion();
     
     // Hide original subtext
     if (subtext) subtext.style.display = "none";
     
-    // Create and insert preview header
+    // SHOW green tick when collapsed (only if section is complete)
+    if (statusEl && hasCompleteSlot) {
+        statusEl.style.display = "flex";
+        if (!hasShownConfetti) {
+            statusEl.classList.add("completed");
+            launchConfetti(statusEl);
+            hasShownConfetti = true;
+        }
+    }
+    
+    // HIDE delete button when collapsed
+    if (deleteBtn) deleteBtn.style.display = "none";
+    
+    // Remove existing preview if any
+    const existing = agendaSection.querySelector(".agenda-preview-slots-container");
+    if (existing) existing.remove();
+    
+    // Create and insert preview slots directly in the section (not in header)
     const previewHTML = createPreviewHeader();
     const previewContainer = document.createElement("div");
-    previewContainer.className = "agenda-preview-header";
+    previewContainer.className = "agenda-preview-slots-container";
     previewContainer.innerHTML = previewHTML;
     
-    const headingGroup = header.querySelector(".section-heading-group");
-    if (headingGroup) {
-        // Remove existing preview if any
-        const existing = header.querySelector(".agenda-preview-header");
-        if (existing) existing.remove();
-        
-        // Insert preview after heading group
-        headingGroup.insertAdjacentElement("afterend", previewContainer);
-    }
+    // Insert preview AFTER header, BEFORE (collapsed) content
+    header.insertAdjacentElement("afterend", previewContainer);
     
     // Animate collapse
     content.style.height = content.scrollHeight + "px";
@@ -172,24 +199,11 @@ export function collapseAgendaSection(): void {
 }
 
 /**
- * Update completion status and handle auto-collapse
+ * Update completion status (but don't show green tick until collapsed)
  */
 export function updateAgendaStatus(): void {
-    const statusEl = document.getElementById("agendaStatus");
-    
-    if (!statusEl) return;
-    
     const { hasCompleteSlot } = checkAgendaCompletion();
-    
-    // Show/hide green tick (shows when at least one slot is complete)
-    if (hasCompleteSlot && !isAgendaSectionComplete) {
-        statusEl.classList.add("completed");
-        launchConfetti(statusEl);
-        isAgendaSectionComplete = true;
-    } else if (!hasCompleteSlot) {
-        statusEl.classList.remove("completed");
-        isAgendaSectionComplete = false;
-    }
+    isAgendaSectionComplete = hasCompleteSlot;
 }
 
 /**

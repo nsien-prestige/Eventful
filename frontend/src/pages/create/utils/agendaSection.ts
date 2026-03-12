@@ -159,12 +159,8 @@ export function renderAgendaSection(): string {
                             <path d="M20 6L9 17L4 12" />
                         </svg>
                     </div>
-                    <button class="section-expand-btn" id="agendaToggle" type="button">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="#3659e3" viewBox="0 0 24 24">
-                            <path d="M13.333 4h-2.667v6.668H4v2.666h6.666V20h2.667v-6.666H20v-2.666h-6.667z" clip-rule="evenodd"></path>
-                        </svg>
-                    </button>
-                    <button class="delete-section-btn" type="button" style="margin-left: 12px;">Delete section</button>
+                    <!-- REMOVED: Expand button - no longer needed -->
+                    <button class="delete-section-btn" id="agendaDeleteBtn" type="button">Delete section</button>
                 </div>
             </div>
 

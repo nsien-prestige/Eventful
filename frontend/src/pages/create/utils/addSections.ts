@@ -1,11 +1,17 @@
 import { renderAgendaSection, setupAgendaSection } from "./agendaSection";
-import { renderPricingSection } from "./pricingSection";
+import { renderPricingSection, setupPricingSection } from "./pricingSection";
 import { 
     expandAgendaSection, 
     setupAgendaClickOutside, 
     setupAgendaHeaderClick,
     monitorAgendaInputs 
 } from "./agendaCollapsible";
+import {
+    expandPricingSection,
+    setupPricingClickOutside,
+    setupPricingHeaderClick,
+    monitorPricingInputs
+} from "./pricingCollapsible";
 
 const AGENDA_ICON = `
     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#3A3247" viewBox="0 0 24 24">
@@ -56,22 +62,23 @@ export function setupAddSectionLogic(): void {
         if (type === "agenda") {
             setupAgendaSection(sectionElement);
             
-            // CUSTOM AGENDA BEHAVIOR:
-            // 1. Auto-expand section (no manual expansion needed)
+            // CUSTOM AGENDA BEHAVIOR
             expandAgendaSection();
-            
-            // 2. Setup header click for re-expansion
             setupAgendaHeaderClick();
-            
-            // 3. Setup click-outside detection for auto-collapse
             setupAgendaClickOutside();
-            
-            // 4. Monitor inputs for completion status
             monitorAgendaInputs();
             
             sectionState.agenda = true;
             document.getElementById("addAgendaItem")?.remove();
         } else {
+            setupPricingSection(sectionElement);
+            
+            // CUSTOM PRICING BEHAVIOR
+            expandPricingSection();
+            setupPricingHeaderClick();
+            setupPricingClickOutside();
+            monitorPricingInputs();
+            
             sectionState.pricing = true;
             document.getElementById("addPricingItem")?.remove();
         }

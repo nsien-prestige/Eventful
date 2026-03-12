@@ -86,6 +86,21 @@ export function renderCreateEventPage(): void {
                 </div>
             </div>
 
+            <!-- CREATE EVENT BUTTON -->
+            <div class="create-button-section">
+                <div class="create-button-container">
+                    <button type="submit" class="create-event-btn" id="createEventBtn">
+                        <span class="create-btn-text">Create Event</span>
+                        <svg class="create-btn-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+                        </svg>
+                    </button>
+                    <p class="create-button-help">
+                        Your event will be saved as a draft and you can publish it later.
+                    </p>
+                </div>
+            </div>
+
         </div>
     `;
 
@@ -103,4 +118,32 @@ export function renderCreateEventPage(): void {
     loadGoogleMaps();
     initSectionProgress();
     setupAddSectionLogic();
+    setupCreateButton();  // Setup Create Event button
+}
+
+/**
+ * Setup Create Event button with loading state
+ */
+function setupCreateButton(): void {
+    const createBtn = document.getElementById("createEventBtn");
+    
+    if (!createBtn) return;
+    
+    createBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        
+        // Add loading state
+        createBtn.classList.add("loading");
+        createBtn.setAttribute("disabled", "true");
+        
+        // TODO: Collect and validate form data
+        console.log("Creating event...");
+        
+        // Simulate API call (remove this later)
+        setTimeout(() => {
+            createBtn.classList.remove("loading");
+            createBtn.removeAttribute("disabled");
+            alert("Event creation logic will be implemented here!");
+        }, 2000);
+    });
 }

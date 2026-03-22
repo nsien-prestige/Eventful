@@ -21,6 +21,11 @@ export function renderHomePage() {
             <!-- FEATURES SECTION -->
             <section class="features-section">
                 <div class="features-container">
+                    <div class="features-intro">
+                        <span class="section-eyebrow">Built for modern events</span>
+                        <h2>Everything your event needs in one smooth workflow</h2>
+                        <p>From discovery to check-in, Eventful gives organizers and attendees a cleaner, faster experience without the usual chaos.</p>
+                    </div>
                     <div class="features-grid">
                         <div class="feature-card">
                             <div class="feature-icon teal">
@@ -115,17 +120,33 @@ export function renderHomePage() {
                 </div>
             </section>
 
-            <!-- EVENTS SECTION -->
+                        <!-- EVENTS SECTION -->
             <section class="events-section">
                 <div class="events-container">
-                    <div class="section-header">
-                        <h2>Upcoming events</h2>
-                        <button class="btn-text" id="viewAllBtn">View all →</button>
+                    <div class="events-intro">
+                        <span class="section-eyebrow">Upcoming events</span>
+                        <div class="events-intro-row">
+                            <div class="events-intro-copy">
+                                <h2>Discover experiences people are already excited about</h2>
+                                <p>Browse standout events across music, tech, food, and culture with a cleaner card layout that puts the experience first.</p>
+                            </div>
+                            <button class="btn-text" id="viewAllBtn">View all →</button>
+                        </div>
                     </div>
                     <div class="events-grid">
                         <div class="event-card">
                             <div class="event-image">
                                 <img src="https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=600&h=400&fit=crop" alt="Music event" />
+                                <div class="event-image-overlay"></div>
+                                <div class="event-image-actions">
+                                    <button class="share-event-btn" type="button" aria-label="Share Lagos Jazz Festival 2026" data-share-url="/events/lagos-jazz-festival-2026">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/>
+                                            <path d="M12 3v12"/>
+                                            <path d="M7 8l5-5 5 5"/>
+                                        </svg>
+                                    </button>
+                                </div>
                                 <span class="event-category">Music</span>
                             </div>
                             <div class="event-content">
@@ -156,6 +177,16 @@ export function renderHomePage() {
                         <div class="event-card">
                             <div class="event-image">
                                 <img src="https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=600&h=400&fit=crop" alt="Tech event" />
+                                <div class="event-image-overlay"></div>
+                                <div class="event-image-actions">
+                                    <button class="share-event-btn" type="button" aria-label="Share Tech Founders Meetup" data-share-url="/events/tech-founders-meetup">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/>
+                                            <path d="M12 3v12"/>
+                                            <path d="M7 8l5-5 5 5"/>
+                                        </svg>
+                                    </button>
+                                </div>
                                 <span class="event-category">Technology</span>
                             </div>
                             <div class="event-content">
@@ -186,6 +217,16 @@ export function renderHomePage() {
                         <div class="event-card">
                             <div class="event-image">
                                 <img src="https://images.unsplash.com/photo-1511578314322-379afb476865?w=600&h=400&fit=crop" alt="Food event" />
+                                <div class="event-image-overlay"></div>
+                                <div class="event-image-actions">
+                                    <button class="share-event-btn" type="button" aria-label="Share Nigerian Food Festival" data-share-url="/events/nigerian-food-festival">
+                                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7"/>
+                                            <path d="M12 3v12"/>
+                                            <path d="M7 8l5-5 5 5"/>
+                                        </svg>
+                                    </button>
+                                </div>
                                 <span class="event-category">Food & Drink</span>
                             </div>
                             <div class="event-content">
@@ -219,22 +260,35 @@ export function renderHomePage() {
             <!-- HOW IT WORKS -->
             <section class="how-section">
                 <div class="how-container">
-                    <h2>How it works</h2>
+                    <div class="how-header">
+                        <span class="section-eyebrow">How it works</span>
+                        <h2>From idea to sold-out event in three clear steps</h2>
+                        <p>Whether you're hosting your first meetup or your next major experience, the flow stays simple and fast from setup to event day.</p>
+                    </div>
                     <div class="how-grid">
                         <div class="how-card">
-                            <div class="how-number">1</div>
+                            <div class="how-step-top">
+                                <div class="how-number">01</div>
+                                <span class="how-step-label">Plan</span>
+                            </div>
                             <h3>Create your event</h3>
-                            <p>Set up your event page with all the details in minutes. Add images, pricing, and schedule.</p>
+                            <p>Build a polished event page in minutes with your visuals, pricing, location, agenda, and ticket options all in one place.</p>
                         </div>
                         <div class="how-card">
-                            <div class="how-number">2</div>
+                            <div class="how-step-top">
+                                <div class="how-number">02</div>
+                                <span class="how-step-label">Launch</span>
+                            </div>
                             <h3>Sell tickets</h3>
-                            <p>Share your event and start selling. Track sales in real-time from your dashboard.</p>
+                            <p>Publish and promote your event, accept secure payments, and watch registrations come in with live tracking from your dashboard.</p>
                         </div>
                         <div class="how-card">
-                            <div class="how-number">3</div>
+                            <div class="how-step-top">
+                                <div class="how-number">03</div>
+                                <span class="how-step-label">Deliver</span>
+                            </div>
                             <h3>Host your event</h3>
-                            <p>Check in attendees with QR codes and manage everything seamlessly.</p>
+                            <p>Check in guests with QR verification, manage attendance smoothly, and keep the full event experience organized on the day.</p>
                         </div>
                     </div>
                 </div>
@@ -291,4 +345,30 @@ export function renderHomePage() {
     document.getElementById("exploreBtn")?.addEventListener("click", () => navigate("/explore"));
     document.getElementById("ctaBtn")?.addEventListener("click", () => navigate("/create"));
     document.getElementById("viewAllBtn")?.addEventListener("click", () => navigate("/explore"));
+    document.querySelectorAll<HTMLButtonElement>(".share-event-btn").forEach((button) => {
+        button.addEventListener("click", async () => {
+            const sharePath = button.dataset.shareUrl;
+            if (!sharePath) return;
+
+            const shareUrl = new URL(sharePath, window.location.origin).toString();
+
+            try {
+                if (navigator.share) {
+                    await navigator.share({
+                        title: "Eventful event",
+                        url: shareUrl,
+                    });
+                } else {
+                    await navigator.clipboard.writeText(shareUrl);
+                    const originalLabel = button.innerHTML;
+                    button.textContent = "Copied";
+                    window.setTimeout(() => {
+                        button.innerHTML = originalLabel;
+                    }, 1400);
+                }
+            } catch {
+                // Ignore cancelled shares and clipboard failures silently.
+            }
+        });
+    });
 }

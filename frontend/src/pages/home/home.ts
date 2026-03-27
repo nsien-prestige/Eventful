@@ -10,7 +10,7 @@ export function renderHomePage() {
             <div class="page-orb orb-two"></div>
             <div class="page-grid"></div>
 
-            <section class="hero-section">
+            <section class="hero-section" id="home-top">
                 <div class="hero-layout">
                     <div class="hero-copy">
                         <div class="hero-kicker">
@@ -80,7 +80,7 @@ export function renderHomePage() {
                 </div>
             </section>
 
-            <section class="features-section">
+            <section class="features-section" id="home-features">
                 <div class="section-heading">
                     <span class="section-tag">Features</span>
                     <h2>Everything that makes events feel seamless, before and after the ticket is sold.</h2>
@@ -158,7 +158,7 @@ export function renderHomePage() {
                 </div>
             </section>
 
-            <section class="events-section">
+            <section class="events-section" id="home-discover">
                 <div class="events-header">
                     <div class="section-heading compact">
                         <span class="section-tag">Upcoming events</span>
@@ -291,7 +291,7 @@ export function renderHomePage() {
                 </div>
             </section>
 
-            <section class="how-section">
+            <section class="how-section" id="home-how">
                 <div class="how-layout">
                     <div class="how-intro">
                         <span class="section-tag alt">How it works</span>
@@ -321,7 +321,7 @@ export function renderHomePage() {
                 </div>
             </section>
 
-            <section class="cta-section">
+            <section class="cta-section" id="home-start">
                 <div class="cta-panel">
                     <span class="cta-tag">Get started</span>
                     <h2>Bring your next event online with a page that already feels world-class.</h2>

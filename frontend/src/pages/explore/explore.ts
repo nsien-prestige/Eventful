@@ -4,7 +4,7 @@ import { navigate } from "../../router";
 import "./explore.css";
 
 const BOOKMARKS_KEY = "eventful:saved-events";
-const PAGE_SIZE = 6;
+const PAGE_SIZE = 9;
 
 type FiltersState = {
     search: string;
@@ -31,90 +31,50 @@ const state: FiltersState = {
 let allEvents: any[] = [];
 
 function parsePriceValue(value: any) {
-    if (typeof value === "number") {
-        return Number.isFinite(value) ? value : 0;
-    }
-
+    if (typeof value === "number") return Number.isFinite(value) ? value : 0;
     if (typeof value === "string") {
         const cleaned = value.replace(/[^\d.]/g, "").trim();
         if (!cleaned) return 0;
         const parsed = Number(cleaned);
         return Number.isFinite(parsed) ? parsed : 0;
     }
-
     return 0;
 }
 
 function formatDateLabel(dateValue: string) {
     const date = new Date(dateValue);
-    return date.toLocaleDateString(undefined, {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-    });
+    return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
 
 function formatTimeLabel(dateValue: string) {
     const date = new Date(dateValue);
-    return date.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-    });
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-function formatCompactPrice(value: number) {
-    return value > 0 ? value.toLocaleString() : "Free";
-}
-
-function getCategoryLabel(event: any) {
-    return event.category || event.type || "Event";
-}
-
-function getLocationLabel(event: any) {
-    return event.venueAddress || event.location || event.locationName || "Location TBD";
-}
-
-function getCreatorLabel(event: any) {
-    return event.organizer || event.creatorName || event.createdBy || "Eventful Creator";
-}
-
-function getInitialLabel(event: any) {
-    const source = event.title || event.category || "E";
-    return source.charAt(0).toUpperCase();
-}
+function getCategoryLabel(event: any) { return event.category || event.type || "Event"; }
+function getLocationLabel(event: any) { return event.venueAddress || event.location || event.locationName || "Location TBD"; }
+function getCreatorLabel(event: any) { return event.organizer || event.creatorName || event.createdBy || "Eventful Creator"; }
+function getInitialLabel(event: any) { return (event.title || event.category || "E").charAt(0).toUpperCase(); }
 
 function getFallbackGradient(event: any) {
     const source = (event.title || event.category || "event").toLowerCase();
     let total = 0;
-
-    for (let index = 0; index < source.length; index += 1) {
-        total += source.charCodeAt(index);
-    }
-
+    for (let i = 0; i < source.length; i++) total += source.charCodeAt(i);
     const palettes = [
-        "linear-gradient(180deg, #74c69d 0%, #2d6a4f 100%)",
-        "linear-gradient(180deg, #7b9acc 0%, #355070 100%)",
-        "linear-gradient(180deg, #f4a261 0%, #b56576 100%)",
-        "linear-gradient(180deg, #43bccd 0%, #386fa4 100%)",
-        "linear-gradient(180deg, #95d5b2 0%, #40916c 100%)",
+        "linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)",
+        "linear-gradient(135deg, #0d1b2a 0%, #1b4332 50%, #2d6a4f 100%)",
+        "linear-gradient(135deg, #1a0a2e 0%, #2d1b69 50%, #11998e 100%)",
+        "linear-gradient(135deg, #2c0a1e 0%, #6b1a3a 50%, #c0392b 100%)",
+        "linear-gradient(135deg, #0a2a1e 0%, #1a4d3a 50%, #27ae60 100%)",
     ];
-
     return palettes[total % palettes.length];
 }
 
 function getTicketProgress(event: any) {
     const sold = Number(event.ticketsSold || event.bookingsCount || 0);
     const capacity = Number(event.capacity || event.totalTickets || 0);
-
-    if (!capacity || capacity < 1) {
-        return { sold, capacity: 0, ratio: 0 };
-    }
-
-    return {
-        sold,
-        capacity,
-        ratio: Math.min(100, Math.round((sold / capacity) * 100)),
-    };
+    if (!capacity || capacity < 1) return { sold, capacity: 0, ratio: 0 };
+    return { sold, capacity, ratio: Math.min(100, Math.round((sold / capacity) * 100)) };
 }
 
 function isOnlineEvent(event: any) {
@@ -127,26 +87,15 @@ function getSavedIds() {
         const raw = localStorage.getItem(BOOKMARKS_KEY);
         const parsed = raw ? JSON.parse(raw) : [];
         return Array.isArray(parsed) ? parsed : [];
-    } catch {
-        return [];
-    }
+    } catch { return []; }
 }
 
-function isSaved(publicId: string) {
-    return getSavedIds().includes(publicId);
-}
+function isSaved(publicId: string) { return getSavedIds().includes(publicId); }
 
 function toggleSaved(publicId: string) {
     const current = new Set(getSavedIds());
-
-    if (current.has(publicId)) {
-        current.delete(publicId);
-        showMessage("Removed from saved events", "success");
-    } else {
-        current.add(publicId);
-        showMessage("Saved event", "success");
-    }
-
+    if (current.has(publicId)) { current.delete(publicId); showMessage("Removed from saved", "success"); }
+    else { current.add(publicId); showMessage("Event saved", "success"); }
     localStorage.setItem(BOOKMARKS_KEY, JSON.stringify([...current]));
 }
 
@@ -156,175 +105,62 @@ function getEventStatus(event: any) {
     const eventDate = new Date(event.date);
     const diff = eventDate.getTime() - now.getTime();
     const dayMs = 24 * 60 * 60 * 1000;
-
-    if (progress.capacity > 0 && progress.sold >= progress.capacity) {
-        return "Sold out";
-    }
-
-    if (progress.capacity > 0 && progress.ratio >= 80) {
-        return "Almost full";
-    }
-
-    if (diff >= 0 && diff < dayMs) {
-        return "Today";
-    }
-
-    if (parsePriceValue(event.price) === 0) {
-        return "Free";
-    }
-
-    if (diff >= 0 && diff < dayMs * 7) {
-        return "This week";
-    }
-
+    if (progress.capacity > 0 && progress.sold >= progress.capacity) return "Sold out";
+    if (progress.capacity > 0 && progress.ratio >= 80) return "Almost full";
+    if (diff >= 0 && diff < dayMs) return "Today";
+    if (parsePriceValue(event.price) === 0) return "Free";
+    if (diff >= 0 && diff < dayMs * 7) return "This week";
     return "";
 }
 
 function matchesDateFilter(event: any, dateFilter: FiltersState["date"]) {
     if (dateFilter === "all") return true;
-
     const now = new Date();
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const eventDate = new Date(event.date).getTime();
     const diff = eventDate - todayStart;
     const dayMs = 24 * 60 * 60 * 1000;
-
-    if (dateFilter === "today") {
-        return diff >= 0 && diff < dayMs;
-    }
-
-    if (dateFilter === "week") {
-        return diff >= 0 && diff < dayMs * 7;
-    }
-
-    if (dateFilter === "month") {
-        return diff >= 0 && diff < dayMs * 31;
-    }
-
+    if (dateFilter === "today") return diff >= 0 && diff < dayMs;
+    if (dateFilter === "week") return diff >= 0 && diff < dayMs * 7;
+    if (dateFilter === "month") return diff >= 0 && diff < dayMs * 31;
     return true;
 }
 
 function filterAndSortEvents(events: any[]) {
     const term = state.search.trim().toLowerCase();
     const savedIds = getSavedIds();
-
     const filtered = events.filter((event) => {
-        const matchesSearch = !term || [
-            event.title,
-            event.description,
-            event.category,
-            event.organizer,
-            event.venueAddress,
-            event.location,
-            event.locationName,
-        ]
-            .filter(Boolean)
-            .some((value) => String(value).toLowerCase().includes(term));
-
+        const matchesSearch = !term || [event.title, event.description, event.category, event.organizer, event.venueAddress, event.location, event.locationName].filter(Boolean).some((v) => String(v).toLowerCase().includes(term));
         const matchesCategory = state.category === "All" || getCategoryLabel(event) === state.category;
         const numericPrice = parsePriceValue(event.price);
         const matchesPrice = state.price === "all" || (state.price === "free" ? numericPrice === 0 : numericPrice > 0);
         const matchesMode = state.mode === "all" || (state.mode === "online" ? isOnlineEvent(event) : !isOnlineEvent(event));
         const matchesSaved = !state.savedOnly || savedIds.includes(event.publicId);
         const matchesDate = matchesDateFilter(event, state.date);
-
         return matchesSearch && matchesCategory && matchesPrice && matchesMode && matchesSaved && matchesDate;
     });
-
     filtered.sort((a, b) => {
         switch (state.sort) {
-            case "latest":
-                return new Date(b.date).getTime() - new Date(a.date).getTime();
-            case "price-low":
-                return parsePriceValue(a.price) - parsePriceValue(b.price);
-            case "price-high":
-                return parsePriceValue(b.price) - parsePriceValue(a.price);
-            case "title":
-                return String(a.title || "").localeCompare(String(b.title || ""));
-            case "soonest":
-            default:
-                return new Date(a.date).getTime() - new Date(b.date).getTime();
+            case "latest": return new Date(b.date).getTime() - new Date(a.date).getTime();
+            case "price-low": return parsePriceValue(a.price) - parsePriceValue(b.price);
+            case "price-high": return parsePriceValue(b.price) - parsePriceValue(a.price);
+            case "title": return String(a.title || "").localeCompare(String(b.title || ""));
+            default: return new Date(a.date).getTime() - new Date(b.date).getTime();
         }
     });
-
     return filtered;
 }
 
 function getSuggestions(events: any[]) {
     const term = state.search.trim().toLowerCase();
     if (!term) return [];
-
     const suggestions = new Set<string>();
-
     events.forEach((event) => {
-        [event.title, event.category, event.organizer, event.location, event.venueAddress]
-            .filter(Boolean)
-            .forEach((value) => {
-                const text = String(value);
-                if (text.toLowerCase().includes(term) && suggestions.size < 5) {
-                    suggestions.add(text);
-                }
-            });
+        [event.title, event.category, event.organizer, event.location, event.venueAddress].filter(Boolean).forEach((value) => {
+            if (String(value).toLowerCase().includes(term) && suggestions.size < 5) suggestions.add(String(value));
+        });
     });
-
     return [...suggestions].slice(0, 5);
-}
-
-function renderSearchIcon() {
-    return `
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/>
-            <path d="M16 16l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-        </svg>
-    `;
-}
-
-function renderCalendarIcon() {
-    return `
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="2"/>
-            <line x1="16" y1="2" x2="16" y2="6" stroke="currentColor" stroke-width="2"/>
-            <line x1="8" y1="2" x2="8" y2="6" stroke="currentColor" stroke-width="2"/>
-            <line x1="3" y1="10" x2="21" y2="10" stroke="currentColor" stroke-width="2"/>
-        </svg>
-    `;
-}
-
-function renderLocationIcon() {
-    return `
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" stroke="currentColor" stroke-width="2"/>
-            <circle cx="12" cy="10" r="3" stroke="currentColor" stroke-width="2"/>
-        </svg>
-    `;
-}
-
-function renderPeopleIcon() {
-    return `
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <path d="M16 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <circle cx="9.5" cy="7" r="3" stroke="currentColor" stroke-width="2"/>
-            <path d="M20 21v-2a4 4 0 0 0-3-3.87" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-            <path d="M14 4.13a4 4 0 0 1 0 5.74" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-    `;
-}
-
-function renderMoneyIcon() {
-    return `
-        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2"/>
-            <path d="M12 7v10M15.5 9.5c-.6-.8-1.8-1.5-3.5-1.5-2.2 0-4 1.2-4 3s1.8 3 4 3 4 1.2 4 3-1.8 3-4 3c-1.7 0-2.9-.7-3.5-1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-    `;
-}
-
-function renderBookmarkIcon(saved: boolean) {
-    return `
-        <svg viewBox="0 0 24 24" fill="${saved ? "currentColor" : "none"}" aria-hidden="true">
-            <path d="M6 4.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V5.5a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"/>
-        </svg>
-    `;
 }
 
 export async function renderExplore() {
@@ -332,78 +168,131 @@ export async function renderExplore() {
 
     app.innerHTML = `
         <div class="explore-page">
-            <div class="explore-shell">
-                <div class="explore-topbar">
-                    <div>
-                        <span class="explore-kicker">Discover</span>
-                        <h1>Browse events with room to choose well.</h1>
-                        <p>Use search, filters, saved events, and cleaner browsing tools to find what actually fits.</p>
+            <!-- Ambient background -->
+            <div class="ex-ambient" aria-hidden="true">
+                <div class="ex-orb ex-orb-1"></div>
+                <div class="ex-orb ex-orb-2"></div>
+                <div class="ex-orb ex-orb-3"></div>
+                <div class="ex-grid"></div>
+            </div>
+
+            <div class="ex-shell">
+
+                <!-- HEADER -->
+                <header class="ex-header">
+                    <div class="ex-eyebrow">
+                        <span class="ex-eyebrow-dot"></span>
+                        <span>Live events</span>
                     </div>
-                    <span class="explore-results-pill" id="resultsCountPill">0 events</span>
-                </div>
+                    <h1 class="ex-title">Find your<em>next experience</em></h1>
+                    <span class="ex-count-pill" id="resultsCountPill">— events</span>
+                </header>
 
-                <div class="explore-toolbar">
-                    <div class="explore-search-wrap">
-                        <label class="explore-search" aria-label="Search events">
-                            ${renderSearchIcon()}
-                            <input id="searchInput" placeholder="Search events, organizers, or places..." />
-                        </label>
-                        <div class="explore-suggestions" id="searchSuggestions"></div>
+                <!-- SEARCH BAR -->
+                <div class="ex-search-bar">
+                    <div class="ex-search-inner">
+                        <svg class="ex-search-ico" viewBox="0 0 24 24" fill="none">
+                            <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/>
+                            <path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+                        </svg>
+                        <input
+                            id="searchInput"
+                            class="ex-search-input"
+                            placeholder="Search events, artists, venues…"
+                            autocomplete="off"
+                        />
+                        <div class="ex-suggestions" id="searchSuggestions"></div>
                     </div>
 
-                    <div class="explore-toolbar-actions">
-                        <button class="toolbar-chip ${state.savedOnly ? "active" : ""}" type="button" id="savedOnlyBtn">Saved</button>
-                        <label class="sort-wrap">
-                            <span>Sort</span>
-                            <select id="sortSelect">
-                                <option value="soonest">Soonest</option>
-                                <option value="latest">Latest</option>
-                                <option value="price-low">Price: Low to high</option>
-                                <option value="price-high">Price: High to low</option>
-                                <option value="title">Title</option>
-                            </select>
-                        </label>
-                    </div>
-                </div>
+                    <div class="ex-search-divider"></div>
 
-                <div class="filter-row">
-                    <div class="category-chip-row" id="categoryChips"></div>
-                    <div class="filter-select-row">
-                        <label class="filter-select-wrap">
-                            <span>Price</span>
-                            <select id="priceSelect">
-                                <option value="all">All prices</option>
-                                <option value="free">Free</option>
-                                <option value="paid">Paid</option>
-                            </select>
-                        </label>
-
-                        <label class="filter-select-wrap">
-                            <span>Format</span>
-                            <select id="modeSelect">
-                                <option value="all">All formats</option>
-                                <option value="physical">Physical</option>
-                                <option value="online">Online</option>
-                            </select>
-                        </label>
-
-                        <label class="filter-select-wrap">
-                            <span>Date</span>
-                            <select id="dateSelect">
-                                <option value="all">Any time</option>
-                                <option value="today">Today</option>
-                                <option value="week">This week</option>
-                                <option value="month">This month</option>
-                            </select>
-                        </label>
+                    <div class="ex-search-controls">
+                        <div class="ex-dropdown ex-sort-dd" id="ddSort">
+                            <button class="ex-dd-trigger ex-sort-trigger" type="button" data-dd="ddSort">
+                                <span class="ex-dd-value" id="ddSortVal">Soonest</span>
+                                <svg class="ex-dd-caret" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </button>
+                            <div class="ex-dd-panel ex-sort-panel" id="ddSortPanel">
+                                <button class="ex-dd-item active" type="button" data-filter="sort" data-value="soonest">Soonest</button>
+                                <button class="ex-dd-item" type="button" data-filter="sort" data-value="latest">Latest</button>
+                                <button class="ex-dd-item" type="button" data-filter="sort" data-value="price-low">Price: low to high</button>
+                                <button class="ex-dd-item" type="button" data-filter="sort" data-value="price-high">Price: high to low</button>
+                                <button class="ex-dd-item" type="button" data-filter="sort" data-value="title">A–Z</button>
+                            </div>
+                        </div>
+                        <button class="ex-saved-btn ${state.savedOnly ? "active" : ""}" id="savedOnlyBtn" type="button">
+                            <svg viewBox="0 0 20 20" fill="${state.savedOnly ? "currentColor" : "none"}">
+                                <path d="M5 3h10a1 1 0 0 1 1 1v13l-6-3.5L4 17V4a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                            </svg>
+                            Saved
+                        </button>
                     </div>
                 </div>
 
-                <div id="eventsContainer" class="events-grid">
-                    <div class="explore-loading">Loading events...</div>
+                <!-- FILTER STRIP -->
+                <div class="ex-filters">
+                    <!-- Category chips: horizontally scrollable, fade-masked -->
+                    <div class="ex-cat-track-wrap">
+                        <div class="ex-cat-track" id="categoryChips"></div>
+                    </div>
+
+                    <!-- Custom dropdowns -->
+                    <div class="ex-filter-dropdowns">
+
+                        <div class="ex-dropdown" id="ddPrice">
+                            <button class="ex-dd-trigger" type="button" data-dd="ddPrice">
+                                <span class="ex-dd-label">Price</span>
+                                <span class="ex-dd-value" id="ddPriceVal">All</span>
+                                <svg class="ex-dd-caret" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </button>
+                            <div class="ex-dd-panel" id="ddPricePanel">
+                                <button class="ex-dd-item active" type="button" data-filter="price" data-value="all">All prices</button>
+                                <button class="ex-dd-item" type="button" data-filter="price" data-value="free">Free</button>
+                                <button class="ex-dd-item" type="button" data-filter="price" data-value="paid">Paid</button>
+                            </div>
+                        </div>
+
+                        <div class="ex-dropdown" id="ddMode">
+                            <button class="ex-dd-trigger" type="button" data-dd="ddMode">
+                                <span class="ex-dd-label">Format</span>
+                                <span class="ex-dd-value" id="ddModeVal">All</span>
+                                <svg class="ex-dd-caret" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </button>
+                            <div class="ex-dd-panel" id="ddModePanel">
+                                <button class="ex-dd-item active" type="button" data-filter="mode" data-value="all">All formats</button>
+                                <button class="ex-dd-item" type="button" data-filter="mode" data-value="physical">In person</button>
+                                <button class="ex-dd-item" type="button" data-filter="mode" data-value="online">Online</button>
+                            </div>
+                        </div>
+
+                        <div class="ex-dropdown" id="ddDate">
+                            <button class="ex-dd-trigger" type="button" data-dd="ddDate">
+                                <span class="ex-dd-label">When</span>
+                                <span class="ex-dd-value" id="ddDateVal">Any time</span>
+                                <svg class="ex-dd-caret" viewBox="0 0 12 12" fill="none"><path d="M2 4l4 4 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+                            </button>
+                            <div class="ex-dd-panel" id="ddDatePanel">
+                                <button class="ex-dd-item active" type="button" data-filter="date" data-value="all">Any time</button>
+                                <button class="ex-dd-item" type="button" data-filter="date" data-value="today">Today</button>
+                                <button class="ex-dd-item" type="button" data-filter="date" data-value="week">This week</button>
+                                <button class="ex-dd-item" type="button" data-filter="date" data-value="month">This month</button>
+                            </div>
+                        </div>
+
+                    </div>
                 </div>
 
-                <div class="pagination-row" id="paginationRow"></div>
+                <!-- EVENTS GRID -->
+                <div id="eventsContainer" class="ex-grid-container">
+                    <div class="ex-loading">
+                        <div class="ex-loading-ring"></div>
+                        <span>Loading events…</span>
+                    </div>
+                </div>
+
+                <!-- PAGINATION -->
+                <div class="ex-pagination" id="paginationRow"></div>
+
             </div>
         </div>
     `;
@@ -426,73 +315,62 @@ function renderExploreUi() {
 }
 
 function syncControlState() {
-    const sort = document.getElementById("sortSelect") as HTMLSelectElement | null;
-    const price = document.getElementById("priceSelect") as HTMLSelectElement | null;
-    const mode = document.getElementById("modeSelect") as HTMLSelectElement | null;
-    const date = document.getElementById("dateSelect") as HTMLSelectElement | null;
     const saved = document.getElementById("savedOnlyBtn");
+    if (saved) {
+        saved.classList.toggle("active", state.savedOnly);
+        const icon = saved.querySelector("svg");
+        if (icon) icon.setAttribute("fill", state.savedOnly ? "currentColor" : "none");
+    }
 
-    if (sort) sort.value = state.sort;
-    if (price) price.value = state.price;
-    if (mode) mode.value = state.mode;
-    if (date) date.value = state.date;
-    saved?.classList.toggle("active", state.savedOnly);
+    const sortLabels:  Record<string, string> = { soonest: "Soonest", latest: "Latest", "price-low": "Price ↑", "price-high": "Price ↓", title: "A–Z" };
+    const priceLabels: Record<string, string> = { all: "All", free: "Free", paid: "Paid" };
+    const modeLabels:  Record<string, string> = { all: "All", physical: "In person", online: "Online" };
+    const dateLabels:  Record<string, string> = { all: "Any time", today: "Today", week: "This week", month: "This month" };
+
+    const setText = (id: string, text: string) => { const e = document.getElementById(id); if (e) e.textContent = text; };
+    setText("ddSortVal",  sortLabels[state.sort]   || "Soonest");
+    setText("ddPriceVal", priceLabels[state.price] || "All");
+    setText("ddModeVal",  modeLabels[state.mode]   || "All");
+    setText("ddDateVal",  dateLabels[state.date]   || "Any time");
+
+    document.querySelectorAll<HTMLElement>("[data-filter='sort']").forEach(e  => e.classList.toggle("active", e.dataset.value === state.sort));
+    document.querySelectorAll<HTMLElement>("[data-filter='price']").forEach(e => e.classList.toggle("active", e.dataset.value === state.price));
+    document.querySelectorAll<HTMLElement>("[data-filter='mode']").forEach(e  => e.classList.toggle("active", e.dataset.value === state.mode));
+    document.querySelectorAll<HTMLElement>("[data-filter='date']").forEach(e  => e.classList.toggle("active", e.dataset.value === state.date));
+
+    document.getElementById("ddSort")?.classList.toggle("is-active",  state.sort  !== "soonest");
+    document.getElementById("ddPrice")?.classList.toggle("is-active", state.price !== "all");
+    document.getElementById("ddMode")?.classList.toggle("is-active",  state.mode  !== "all");
+    document.getElementById("ddDate")?.classList.toggle("is-active",  state.date  !== "all");
 }
 
 function renderCategoryChips(events: any[]) {
     const root = document.getElementById("categoryChips");
     if (!root) return;
-
     const categories = Array.from(new Set(events.map(getCategoryLabel))).sort((a, b) => a.localeCompare(b));
-    const allCategories = ["All", ...categories];
-
-    root.innerHTML = allCategories.map((category) => `
-        <button
-            class="category-chip ${state.category === category ? "active" : ""}"
-            type="button"
-            data-category="${category}"
-        >
-            ${category}
+    root.innerHTML = ["All", ...categories].map((cat) => `
+        <button class="ex-chip ${state.category === cat ? "active" : ""}" type="button" data-category="${cat}">
+            ${cat}
         </button>
     `).join("");
-
-    root.querySelectorAll<HTMLElement>("[data-category]").forEach((button) => {
-        button.addEventListener("click", () => {
-            state.category = button.dataset.category || "All";
-            state.page = 1;
-            renderExploreUi();
-        });
+    root.querySelectorAll<HTMLElement>("[data-category]").forEach((btn) => {
+        btn.addEventListener("click", () => { state.category = btn.dataset.category || "All"; state.page = 1; renderExploreUi(); });
     });
 }
 
 function renderSuggestions(events: any[]) {
     const root = document.getElementById("searchSuggestions");
     if (!root) return;
-
     const suggestions = getSuggestions(events);
-
-    if (!suggestions.length) {
-        root.innerHTML = "";
-        root.classList.remove("show");
-        return;
-    }
-
-    root.innerHTML = suggestions.map((item) => `
-        <button class="suggestion-item" type="button" data-suggestion="${item}">
-            ${item}
-        </button>
-    `).join("");
-
+    if (!suggestions.length) { root.innerHTML = ""; root.classList.remove("show"); return; }
+    root.innerHTML = suggestions.map((item) => `<button class="ex-suggestion" type="button" data-suggestion="${item}">${item}</button>`).join("");
     root.classList.add("show");
-
-    root.querySelectorAll<HTMLElement>("[data-suggestion]").forEach((button) => {
-        button.addEventListener("click", () => {
-            state.search = button.dataset.suggestion || "";
+    root.querySelectorAll<HTMLElement>("[data-suggestion]").forEach((btn) => {
+        btn.addEventListener("click", () => {
+            state.search = btn.dataset.suggestion || "";
             state.page = 1;
-
             const input = document.getElementById("searchInput") as HTMLInputElement | null;
             if (input) input.value = state.search;
-
             renderExploreUi();
         });
     });
@@ -504,123 +382,46 @@ function renderEvents(events: any[]) {
     const filtered = filterAndSortEvents(events);
     const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     state.page = Math.min(state.page, totalPages);
-
     const start = (state.page - 1) * PAGE_SIZE;
-    const currentPageItems = filtered.slice(start, start + PAGE_SIZE);
+    const pageItems = filtered.slice(start, start + PAGE_SIZE);
 
-    if (countPill) {
-        countPill.textContent = `${filtered.length} event${filtered.length === 1 ? "" : "s"}`;
-    }
+    if (countPill) countPill.textContent = `${filtered.length} event${filtered.length === 1 ? "" : "s"}`;
 
-    if (!currentPageItems.length) {
+    if (!pageItems.length) {
         container.innerHTML = `
-            <div class="empty-state">
-                <h3>No events match these filters</h3>
-                <p>Try broadening your search, switching categories, or clearing saved-only mode.</p>
-                <div class="empty-state-actions">
-                    <button type="button" class="empty-action-btn" id="clearFiltersBtn">Clear filters</button>
+            <div class="ex-empty">
+                <div class="ex-empty-icon">
+                    <svg viewBox="0 0 48 48" fill="none">
+                        <circle cx="22" cy="22" r="14" stroke="currentColor" stroke-width="2"/>
+                        <path d="M32 32l10 10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                        <path d="M17 22h10M22 17v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                    </svg>
                 </div>
+                <h3>No events found</h3>
+                <p>Try adjusting your filters or search terms</p>
+                <button class="ex-clear-btn" id="clearFiltersBtn" type="button">Clear all filters</button>
             </div>
         `;
-
         document.getElementById("paginationRow")!.innerHTML = "";
         document.getElementById("clearFiltersBtn")?.addEventListener("click", () => {
-            state.search = "";
-            state.category = "All";
-            state.price = "all";
-            state.mode = "all";
-            state.date = "all";
-            state.savedOnly = false;
-            state.sort = "soonest";
-            state.page = 1;
-
+            state.search = ""; state.category = "All"; state.price = "all"; state.mode = "all";
+            state.date = "all"; state.savedOnly = false; state.sort = "soonest"; state.page = 1;
             const input = document.getElementById("searchInput") as HTMLInputElement | null;
             if (input) input.value = "";
-
-            const sort = document.getElementById("sortSelect") as HTMLSelectElement | null;
-            if (sort) sort.value = "soonest";
-
             renderExploreUi();
         });
         return;
     }
 
-    container.innerHTML = currentPageItems.map((event) => {
-        const progress = getTicketProgress(event);
-        const creator = getCreatorLabel(event);
-        const creatorInitials = creator.split(" ").map((part: string) => part.charAt(0)).join("").slice(0, 2).toUpperCase() || "EV";
-        const hasImage = Boolean(event.imageUrl);
-        const status = getEventStatus(event);
-        const saved = isSaved(event.publicId);
-        const numericPrice = parsePriceValue(event.price);
+    container.innerHTML = `<div class="ex-events-grid">${pageItems.map((event, i) => renderEventCard(event, i)).join("")}</div>`;
 
-        return `
-            <article class="event-card" data-id="${event.publicId}">
-                <div class="event-image ${hasImage ? "has-image" : "no-image"}"
-                    ${hasImage ? `style="background-image: url('${event.imageUrl}')"` : `style="background: ${getFallbackGradient(event)}"`}
-                >
-                    <div class="event-image-top">
-                        <span class="event-badge">${getCategoryLabel(event)}</span>
-                        <button class="bookmark-btn ${saved ? "active" : ""}" type="button" data-save-id="${event.publicId}" aria-label="Save ${event.title}">
-                            ${renderBookmarkIcon(saved)}
-                        </button>
-                    </div>
-                    ${hasImage ? "" : `<span class="event-image-initial">${getInitialLabel(event)}</span>`}
-                </div>
-
-                <div class="event-content">
-                    <div class="event-title-row">
-                        <h3>${event.title}</h3>
-                        ${status ? `<span class="event-status">${status}</span>` : ""}
-                    </div>
-
-                    <p class="event-description">${event.description || "A standout event experience waiting for the right crowd."}</p>
-
-                    <div class="event-detail">
-                        ${renderCalendarIcon()}
-                        <span>${formatDateLabel(event.date)} at ${formatTimeLabel(event.date)}</span>
-                    </div>
-
-                    <div class="event-detail">
-                        ${renderLocationIcon()}
-                        <span>${getLocationLabel(event)}</span>
-                    </div>
-
-                    <div class="event-footer">
-                        <div class="event-stat-line">
-                            <span class="event-stat">
-                                ${renderPeopleIcon()}
-                                <span>${progress.capacity ? `${progress.sold}/${progress.capacity}` : `${progress.sold}`}</span>
-                            </span>
-                            <span class="event-price">
-                                ${renderMoneyIcon()}
-                                <span>${formatCompactPrice(numericPrice)}</span>
-                            </span>
-                        </div>
-                        <div class="event-progress">
-                            <span style="width: ${progress.ratio}%"></span>
-                        </div>
-                        <div class="event-creator">
-                            <span class="event-creator-avatar">${creatorInitials}</span>
-                            <span class="event-creator-name">by ${creator}</span>
-                        </div>
-                    </div>
-                </div>
-            </article>
-        `;
-    }).join("");
-
-    container.querySelectorAll<HTMLElement>(".event-card").forEach((card) => {
-        card.addEventListener("click", () => {
-            const id = card.dataset.id;
-            if (id) navigate(`/event/${id}`);
-        });
+    container.querySelectorAll<HTMLElement>(".ex-card").forEach((card) => {
+        card.addEventListener("click", () => { const id = card.dataset.id; if (id) navigate(`/event/${id}`); });
     });
-
-    container.querySelectorAll<HTMLElement>("[data-save-id]").forEach((button) => {
-        button.addEventListener("click", (event) => {
-            event.stopPropagation();
-            const id = button.dataset.saveId;
+    container.querySelectorAll<HTMLElement>("[data-save-id]").forEach((btn) => {
+        btn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const id = btn.dataset.saveId;
             if (!id) return;
             toggleSaved(id);
             renderExploreUi();
@@ -630,101 +431,147 @@ function renderEvents(events: any[]) {
     renderPagination(totalPages);
 }
 
+function renderEventCard(event: any, index: number): string {
+    const progress = getTicketProgress(event);
+    const creator = getCreatorLabel(event);
+    const initials = creator.split(" ").map((p: string) => p.charAt(0)).join("").slice(0, 2).toUpperCase() || "EV";
+    const hasImage = Boolean(event.imageUrl);
+    const status = getEventStatus(event);
+    const saved = isSaved(event.publicId);
+    const numericPrice = parsePriceValue(event.price);
+    const priceLabel = numericPrice === 0 ? "Free" : `₦${numericPrice.toLocaleString()}`;
+    const isOnline = isOnlineEvent(event);
+
+    const statusClass = status === "Sold out" ? "sold" : status === "Almost full" ? "hot" : status === "Today" ? "today" : status === "Free" ? "free" : "";
+
+    return `
+        <article class="ex-card" data-id="${event.publicId}" style="--delay: ${index * 60}ms">
+            <div class="ex-card-image ${hasImage ? "has-img" : ""}" 
+                ${hasImage ? `style="background-image: url('${event.imageUrl}')"` : `style="background: ${getFallbackGradient(event)}"`}>
+                
+                ${!hasImage ? `<span class="ex-card-initial">${getInitialLabel(event)}</span>` : ""}
+                
+                <div class="ex-card-image-overlay"></div>
+                
+                <div class="ex-card-top-row">
+                    <span class="ex-card-cat">${getCategoryLabel(event)}</span>
+                    <button class="ex-bookmark ${saved ? "active" : ""}" type="button" data-save-id="${event.publicId}" aria-label="Save">
+                        <svg viewBox="0 0 20 20" fill="${saved ? "currentColor" : "none"}">
+                            <path d="M5 3h10a1 1 0 0 1 1 1v13l-6-3.5L4 17V4a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="ex-card-bottom-image">
+                    <div class="ex-card-price-badge">${priceLabel}</div>
+                    ${status ? `<span class="ex-status-badge ${statusClass}">${status}</span>` : ""}
+                </div>
+            </div>
+
+            <div class="ex-card-body">
+                <h3 class="ex-card-title">${event.title}</h3>
+                
+                <div class="ex-card-meta">
+                    <span class="ex-meta-item">
+                        <svg viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" stroke-width="1.4"/><path d="M5 1v3M11 1v3M2 6h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                        ${formatDateLabel(event.date)} · ${formatTimeLabel(event.date)}
+                    </span>
+                    <span class="ex-meta-item">
+                        <svg viewBox="0 0 16 16" fill="none"><path d="M8 14S3 9.5 3 6.5a5 5 0 0 1 10 0C13 9.5 8 14 8 14Z" stroke="currentColor" stroke-width="1.4"/><circle cx="8" cy="6.5" r="1.5" stroke="currentColor" stroke-width="1.4"/></svg>
+                        ${isOnline ? "Online event" : getLocationLabel(event)}
+                    </span>
+                </div>
+
+                <div class="ex-card-footer">
+                    <div class="ex-creator">
+                        <span class="ex-creator-av">${initials}</span>
+                        <span class="ex-creator-name">${creator}</span>
+                    </div>
+                    ${progress.capacity > 0 ? `
+                        <div class="ex-capacity">
+                            <div class="ex-cap-bar"><span style="width:${progress.ratio}%"></span></div>
+                            <span class="ex-cap-text">${progress.ratio}% filled</span>
+                        </div>
+                    ` : ""}
+                </div>
+            </div>
+        </article>
+    `;
+}
+
 function renderPagination(totalPages: number) {
     const root = document.getElementById("paginationRow");
-    if (!root) return;
-
-    if (totalPages <= 1) {
-        root.innerHTML = "";
-        return;
-    }
-
-    const pages = Array.from({ length: totalPages }, (_, index) => index + 1);
-
+    if (!root || totalPages <= 1) { if (root) root.innerHTML = ""; return; }
+    const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
     root.innerHTML = `
-        <button class="page-btn" type="button" data-page-nav="prev" ${state.page === 1 ? "disabled" : ""}>Previous</button>
-        ${pages.map((page) => `
-            <button class="page-btn ${state.page === page ? "active" : ""}" type="button" data-page="${page}">
-                ${page}
-            </button>
-        `).join("")}
-        <button class="page-btn" type="button" data-page-nav="next" ${state.page === totalPages ? "disabled" : ""}>Next</button>
+        <button class="ex-page-btn" type="button" data-page-nav="prev" ${state.page === 1 ? "disabled" : ""}>← Prev</button>
+        ${pages.map((p) => `<button class="ex-page-btn ${state.page === p ? "active" : ""}" type="button" data-page="${p}">${p}</button>`).join("")}
+        <button class="ex-page-btn" type="button" data-page-nav="next" ${state.page === totalPages ? "disabled" : ""}>Next →</button>
     `;
+    root.querySelectorAll<HTMLElement>("[data-page]").forEach((btn) => {
+        btn.addEventListener("click", () => { state.page = Number(btn.dataset.page || 1); renderExploreUi(); window.scrollTo({ top: 0, behavior: "smooth" }); });
+    });
+    root.querySelector<HTMLElement>("[data-page-nav='prev']")?.addEventListener("click", () => { state.page = Math.max(1, state.page - 1); renderExploreUi(); window.scrollTo({ top: 0, behavior: "smooth" }); });
+    root.querySelector<HTMLElement>("[data-page-nav='next']")?.addEventListener("click", () => { state.page = Math.min(totalPages, state.page + 1); renderExploreUi(); window.scrollTo({ top: 0, behavior: "smooth" }); });
+}
 
-    root.querySelectorAll<HTMLElement>("[data-page]").forEach((button) => {
-        button.addEventListener("click", () => {
-            state.page = Number(button.dataset.page || 1);
-            renderExploreUi();
-            window.scrollTo({ top: 0, behavior: "smooth" });
-        });
+// ── Global dropdown close — registered exactly once ───────────────────────
+let _globalDropdownsReady = false;
+
+function closeAllDropdowns() {
+    document.querySelectorAll(".ex-dropdown.open").forEach(d => d.classList.remove("open"));
+}
+
+function initDropdownDelegation() {
+    if (_globalDropdownsReady) return;
+    _globalDropdownsReady = true;
+
+    // Outside click → close all
+    document.addEventListener("click", (e) => {
+        if (!(e.target as HTMLElement).closest(".ex-dropdown")) {
+            closeAllDropdowns();
+        }
     });
 
-    root.querySelector<HTMLElement>("[data-page-nav='prev']")?.addEventListener("click", () => {
-        state.page = Math.max(1, state.page - 1);
-        renderExploreUi();
-        window.scrollTo({ top: 0, behavior: "smooth" });
+    // Trigger click → toggle panel
+    document.addEventListener("click", (e) => {
+        const trigger = (e.target as HTMLElement).closest<HTMLElement>(".ex-dd-trigger");
+        if (!trigger) return;
+        e.stopPropagation();
+        const ddId   = trigger.dataset.dd!;
+        const dd     = document.getElementById(ddId);
+        const isOpen = dd?.classList.contains("open");
+        closeAllDropdowns();
+        if (!isOpen) dd?.classList.add("open");
     });
 
-    root.querySelector<HTMLElement>("[data-page-nav='next']")?.addEventListener("click", () => {
-        state.page = Math.min(totalPages, state.page + 1);
+    // Item click → update state
+    document.addEventListener("click", (e) => {
+        const item = (e.target as HTMLElement).closest<HTMLElement>(".ex-dd-item");
+        if (!item) return;
+        e.stopPropagation();
+        const filter = item.dataset.filter as "sort" | "price" | "mode" | "date";
+        const value  = item.dataset.value!;
+        if (filter === "sort")  state.sort  = value as FiltersState["sort"];
+        if (filter === "price") state.price = value as FiltersState["price"];
+        if (filter === "mode")  state.mode  = value as FiltersState["mode"];
+        if (filter === "date")  state.date  = value as FiltersState["date"];
+        state.page = 1;
+        closeAllDropdowns();
         renderExploreUi();
-        window.scrollTo({ top: 0, behavior: "smooth" });
     });
 }
 
 function setupExploreInteractions() {
-    const input = document.getElementById("searchInput") as HTMLInputElement | null;
-    const sort = document.getElementById("sortSelect") as HTMLSelectElement | null;
-    const price = document.getElementById("priceSelect") as HTMLSelectElement | null;
-    const mode = document.getElementById("modeSelect") as HTMLSelectElement | null;
-    const date = document.getElementById("dateSelect") as HTMLSelectElement | null;
+    const input        = document.getElementById("searchInput") as HTMLInputElement | null;
     const savedOnlyBtn = document.getElementById("savedOnlyBtn");
 
-    input?.addEventListener("input", () => {
-        state.search = input.value;
-        state.page = 1;
-        renderExploreUi();
-    });
+    input?.addEventListener("input", () => { state.search = input.value; state.page = 1; renderExploreUi(); });
+    input?.addEventListener("blur",  () => { setTimeout(() => { document.getElementById("searchSuggestions")?.classList.remove("show"); }, 120); });
+    input?.addEventListener("focus", () => { if (getSuggestions(allEvents).length) document.getElementById("searchSuggestions")?.classList.add("show"); });
+    savedOnlyBtn?.addEventListener("click", () => { state.savedOnly = !state.savedOnly; state.page = 1; renderExploreUi(); });
 
-    input?.addEventListener("blur", () => {
-        window.setTimeout(() => {
-            document.getElementById("searchSuggestions")?.classList.remove("show");
-        }, 120);
-    });
-
-    input?.addEventListener("focus", () => {
-        if (getSuggestions(allEvents).length) {
-            document.getElementById("searchSuggestions")?.classList.add("show");
-        }
-    });
-
-    sort?.addEventListener("change", () => {
-        state.sort = sort.value as FiltersState["sort"];
-        state.page = 1;
-        renderExploreUi();
-    });
-
-    price?.addEventListener("change", () => {
-        state.price = price.value as FiltersState["price"];
-        state.page = 1;
-        renderExploreUi();
-    });
-
-    mode?.addEventListener("change", () => {
-        state.mode = mode.value as FiltersState["mode"];
-        state.page = 1;
-        renderExploreUi();
-    });
-
-    date?.addEventListener("change", () => {
-        state.date = date.value as FiltersState["date"];
-        state.page = 1;
-        renderExploreUi();
-    });
-
-    savedOnlyBtn?.addEventListener("click", () => {
-        state.savedOnly = !state.savedOnly;
-        state.page = 1;
-        renderExploreUi();
-    });
+    // Wire up all custom dropdown behaviour via delegation (safe to call multiple times)
+    initDropdownDelegation();
 }
+

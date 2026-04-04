@@ -26,11 +26,13 @@
     border-bottom: 1px solid rgba(112, 146, 201, 0.14);
 }
 
+/* DARK explore navbar — matches the cinematic dark aesthetic */
 .explore-navbar {
     background:
-        linear-gradient(180deg, rgba(247, 251, 255, 0.92), rgba(247, 251, 255, 0.62)),
-        radial-gradient(circle at top right, rgba(31, 201, 171, 0.06), transparent 34%);
-    border-bottom: 1px solid rgba(29, 58, 110, 0.08);
+        linear-gradient(180deg, rgba(8, 12, 18, 0.94), rgba(8, 12, 18, 0.82)),
+        radial-gradient(circle at top right, rgba(126, 234, 234, 0.06), transparent 34%);
+    border-bottom: 1px solid rgba(126, 234, 234, 0.08);
+    backdrop-filter: blur(18px);
 }
 
 .nav-shell {
@@ -68,14 +70,15 @@
         inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
+/* Dark pill shell for explore */
 .explore-navbar .standard-shell {
     padding: 10px 14px;
     border-radius: 24px;
-    background: rgba(255, 255, 255, 0.76);
-    border: 1px solid rgba(21, 32, 51, 0.08);
+    background: rgba(13, 19, 30, 0.72);
+    border: 1px solid rgba(126, 234, 234, 0.1);
     box-shadow:
-        0 16px 36px rgba(32, 55, 92, 0.1),
-        inset 0 1px 0 rgba(255, 255, 255, 0.72);
+        0 16px 36px rgba(0, 0, 0, 0.3),
+        inset 0 1px 0 rgba(255, 255, 255, 0.04);
 }
 
 .brand-lockup {
@@ -93,8 +96,9 @@
     color: #eef4ff;
 }
 
+/* Light text for dark explore navbar */
 .explore-navbar .brand-lockup {
-    color: #152033;
+    color: #e8f4ff;
 }
 
 .brand-mark {
@@ -126,15 +130,16 @@
         0 12px 24px rgba(4, 11, 25, 0.24);
 }
 
+/* Dark brand mark for explore */
 .explore-navbar .brand-mark {
     background:
-        linear-gradient(135deg, rgba(84, 124, 255, 0.16), rgba(76, 203, 192, 0.18)),
-        rgba(255, 255, 255, 0.8);
-    border-color: rgba(255, 255, 255, 0.82);
-    color: #214cb8;
+        linear-gradient(135deg, rgba(126, 234, 234, 0.18), rgba(156, 111, 228, 0.2)),
+        rgba(10, 18, 34, 0.88);
+    border-color: rgba(126, 234, 234, 0.14);
+    color: #7eeaea;
     box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.92),
-        0 12px 28px rgba(32, 55, 92, 0.1);
+        inset 0 1px 0 rgba(255, 255, 255, 0.06),
+        0 12px 24px rgba(0, 0, 0, 0.3);
 }
 
 .brand-copy {
@@ -155,7 +160,7 @@
 }
 
 .explore-navbar .brand-copy strong {
-    color: #14233b;
+    color: #f0f6ff;
 }
 
 .nav-links {
@@ -206,8 +211,9 @@
     color: rgba(209, 221, 245, 0.74);
 }
 
+/* Muted light color for explore nav links */
 .explore-navbar .nav-link {
-    color: #50627e;
+    color: rgba(180, 205, 235, 0.74);
 }
 
 .nav-link:hover,
@@ -223,10 +229,11 @@
     color: #ffffff;
 }
 
+/* Teal-tinted hover for explore */
 .explore-navbar .nav-link:hover,
 .explore-navbar .nav-link.active {
-    background: linear-gradient(135deg, rgba(64, 112, 245, 0.12), rgba(35, 188, 167, 0.1));
-    color: #234cce;
+    background: rgba(126, 234, 234, 0.08);
+    color: #7eeaea;
 }
 
 .home-links .nav-link {
@@ -323,10 +330,11 @@
     color: #f2f6ff;
 }
 
+/* Dark profile trigger for explore */
 .explore-navbar .profile-trigger {
-    background: rgba(255, 255, 255, 0.72);
-    border-color: rgba(21, 32, 51, 0.08);
-    color: #152033;
+    background: rgba(13, 22, 40, 0.56);
+    border-color: rgba(126, 234, 234, 0.14);
+    color: #f0f6ff;
 }
 
 .profile-trigger:hover {
@@ -339,7 +347,7 @@
 }
 
 .explore-navbar .profile-trigger:hover {
-    background: rgba(255, 255, 255, 0.96);
+    background: rgba(20, 32, 54, 0.72);
 }
 
 .home-actions .profile-trigger {
@@ -372,9 +380,10 @@
     color: #e2ebff;
 }
 
+/* Teal-tinted avatar for explore */
 .explore-navbar .profile-avatar {
-    background: linear-gradient(135deg, rgba(74, 118, 255, 0.16), rgba(92, 201, 192, 0.22));
-    color: #2547a0;
+    background: linear-gradient(135deg, rgba(126, 234, 234, 0.18), rgba(156, 111, 228, 0.2));
+    color: #7eeaea;
 }
 
 .profile-text {
@@ -397,7 +406,7 @@
 
 .explore-navbar .profile-chevron,
 .explore-navbar .profile-text {
-    color: #6b7c95;
+    color: rgba(180, 210, 240, 0.82);
 }
 
 .profile-menu {
@@ -423,10 +432,11 @@
     box-shadow: 0 20px 44px rgba(3, 10, 24, 0.28);
 }
 
+/* Dark dropdown menu for explore */
 .explore-navbar .profile-menu {
-    background: rgba(255, 255, 255, 0.96);
-    border-color: rgba(21, 32, 51, 0.08);
-    box-shadow: 0 20px 44px rgba(32, 55, 92, 0.12);
+    background: rgba(10, 16, 28, 0.97);
+    border-color: rgba(126, 234, 234, 0.12);
+    box-shadow: 0 20px 44px rgba(0, 0, 0, 0.5);
 }
 
 .dashboard-navbar .profile-menu-item:hover {

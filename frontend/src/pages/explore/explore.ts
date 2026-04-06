@@ -30,17 +30,84 @@ const state: FiltersState = {
 
 let allEvents: any[] = [];
 
-function parsePriceValue(value: any) {
-    if (typeof value === "number") return Number.isFinite(value) ? value : 0;
+// ── Price helpers ──────────────────────────────────────────────────────────
+// Safely coerces any value to a non-negative number.
+function parsePriceValue(value: any): number {
+    if (typeof value === "number") return Number.isFinite(value) ? Math.max(0, value) : 0;
     if (typeof value === "string") {
         const cleaned = value.replace(/[^\d.]/g, "").trim();
         if (!cleaned) return 0;
         const parsed = Number(cleaned);
-        return Number.isFinite(parsed) ? parsed : 0;
+        return Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
     }
     return 0;
 }
 
+// Get the effective price for an event — checks flat price field first,
+// then falls back to the lowest ticket tier price.
+export function getEventPrice(event: any): number {
+    // 1. Try the flat price field
+    const flatPrice = parsePriceValue(event.price);
+    if (flatPrice > 0) return flatPrice;
+
+    // 2. Try tickets array — find the lowest priced paid ticket
+    const tickets = Array.isArray(event.tickets) ? event.tickets : [];
+    if (tickets.length === 0) return 0;
+
+    let lowestPaid = Infinity;
+    let hasFreeTicket = false;
+
+    for (const ticket of tickets) {
+        const ticketPrice = parsePriceValue(ticket.price);
+        if (ticket.isFree || ticketPrice === 0) {
+            hasFreeTicket = true;
+        } else if (ticketPrice < lowestPaid) {
+            lowestPaid = ticketPrice;
+        }
+    }
+
+    // If there are only free tickets (or no paid ones at all) → free
+    if (lowestPaid === Infinity) return 0;
+    return lowestPaid;
+}
+
+// ── Capacity helpers ───────────────────────────────────────────────────────
+function getTotalCapacity(event: any): number {
+    // 1. Flat capacity field
+    const flatCap = Number(event.capacity || event.totalTickets || 0);
+    if (flatCap > 0) return flatCap;
+
+    // 2. Sum ticket quantities from the tickets array
+    const tickets = Array.isArray(event.tickets) ? event.tickets : [];
+    if (tickets.length === 0) return 0;
+
+    return tickets.reduce((sum: number, t: any) => {
+        const qty = Number(t.quantity || t.available || 0);
+        return sum + (Number.isFinite(qty) ? qty : 0);
+    }, 0);
+}
+
+function getTotalSold(event: any): number {
+    // 1. Flat sold field
+    const flatSold = Number(event.ticketsSold || event.bookingsCount || 0);
+    if (flatSold > 0) return flatSold;
+
+    // 2. Sum sold from ticket tiers
+    const tickets = Array.isArray(event.tickets) ? event.tickets : [];
+    return tickets.reduce((sum: number, t: any) => {
+        const s = Number(t.sold || t.ticketsSold || 0);
+        return sum + (Number.isFinite(s) ? s : 0);
+    }, 0);
+}
+
+function getTicketProgress(event: any) {
+    const sold = getTotalSold(event);
+    const capacity = getTotalCapacity(event);
+    if (!capacity || capacity < 1) return { sold, capacity: 0, ratio: 0 };
+    return { sold, capacity, ratio: Math.min(100, Math.round((sold / capacity) * 100)) };
+}
+
+// ── Display helpers ────────────────────────────────────────────────────────
 function formatDateLabel(dateValue: string) {
     const date = new Date(dateValue);
     return date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -70,18 +137,12 @@ function getFallbackGradient(event: any) {
     return palettes[total % palettes.length];
 }
 
-function getTicketProgress(event: any) {
-    const sold = Number(event.ticketsSold || event.bookingsCount || 0);
-    const capacity = Number(event.capacity || event.totalTickets || 0);
-    if (!capacity || capacity < 1) return { sold, capacity: 0, ratio: 0 };
-    return { sold, capacity, ratio: Math.min(100, Math.round((sold / capacity) * 100)) };
-}
-
 function isOnlineEvent(event: any) {
     const locationType = String(event.locationType || "").toLowerCase();
     return Boolean(event.isOnline) || locationType === "online" || Boolean(event.meetingLink);
 }
 
+// ── Bookmarks ──────────────────────────────────────────────────────────────
 function getSavedIds() {
     try {
         const raw = localStorage.getItem(BOOKMARKS_KEY);
@@ -99,6 +160,7 @@ function toggleSaved(publicId: string) {
     localStorage.setItem(BOOKMARKS_KEY, JSON.stringify([...current]));
 }
 
+// ── Status badge ───────────────────────────────────────────────────────────
 function getEventStatus(event: any) {
     const progress = getTicketProgress(event);
     const now = new Date();
@@ -108,11 +170,12 @@ function getEventStatus(event: any) {
     if (progress.capacity > 0 && progress.sold >= progress.capacity) return "Sold out";
     if (progress.capacity > 0 && progress.ratio >= 80) return "Almost full";
     if (diff >= 0 && diff < dayMs) return "Today";
-    if (parsePriceValue(event.price) === 0) return "Free";
+    if (getEventPrice(event) === 0) return "Free";
     if (diff >= 0 && diff < dayMs * 7) return "This week";
     return "";
 }
 
+// ── Date filter ────────────────────────────────────────────────────────────
 function matchesDateFilter(event: any, dateFilter: FiltersState["date"]) {
     if (dateFilter === "all") return true;
     const now = new Date();
@@ -126,13 +189,14 @@ function matchesDateFilter(event: any, dateFilter: FiltersState["date"]) {
     return true;
 }
 
+// ── Filter + sort ──────────────────────────────────────────────────────────
 function filterAndSortEvents(events: any[]) {
     const term = state.search.trim().toLowerCase();
     const savedIds = getSavedIds();
     const filtered = events.filter((event) => {
         const matchesSearch = !term || [event.title, event.description, event.category, event.organizer, event.venueAddress, event.location, event.locationName].filter(Boolean).some((v) => String(v).toLowerCase().includes(term));
         const matchesCategory = state.category === "All" || getCategoryLabel(event) === state.category;
-        const numericPrice = parsePriceValue(event.price);
+        const numericPrice = getEventPrice(event);
         const matchesPrice = state.price === "all" || (state.price === "free" ? numericPrice === 0 : numericPrice > 0);
         const matchesMode = state.mode === "all" || (state.mode === "online" ? isOnlineEvent(event) : !isOnlineEvent(event));
         const matchesSaved = !state.savedOnly || savedIds.includes(event.publicId);
@@ -142,8 +206,8 @@ function filterAndSortEvents(events: any[]) {
     filtered.sort((a, b) => {
         switch (state.sort) {
             case "latest": return new Date(b.date).getTime() - new Date(a.date).getTime();
-            case "price-low": return parsePriceValue(a.price) - parsePriceValue(b.price);
-            case "price-high": return parsePriceValue(b.price) - parsePriceValue(a.price);
+            case "price-low": return getEventPrice(a) - getEventPrice(b);
+            case "price-high": return getEventPrice(b) - getEventPrice(a);
             case "title": return String(a.title || "").localeCompare(String(b.title || ""));
             default: return new Date(a.date).getTime() - new Date(b.date).getTime();
         }
@@ -163,6 +227,7 @@ function getSuggestions(events: any[]) {
     return [...suggestions].slice(0, 5);
 }
 
+// ── Main render ────────────────────────────────────────────────────────────
 export async function renderExplore() {
     const app = document.getElementById("app")!;
 
@@ -189,7 +254,7 @@ export async function renderExplore() {
                 </header>
 
                 <!-- SEARCH BAR -->
-                <div class="ex-search-bar">
+                <div class="ex-search-bar" id="exSearchBar">
                     <div class="ex-search-inner">
                         <svg class="ex-search-ico" viewBox="0 0 24 24" fill="none">
                             <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="1.6"/>
@@ -201,7 +266,6 @@ export async function renderExplore() {
                             placeholder="Search events, artists, venues…"
                             autocomplete="off"
                         />
-                        <div class="ex-suggestions" id="searchSuggestions"></div>
                     </div>
 
                     <div class="ex-search-divider"></div>
@@ -227,6 +291,9 @@ export async function renderExplore() {
                             Saved
                         </button>
                     </div>
+
+                    <!-- Suggestions: inside the search bar so it stays aligned -->
+                    <div class="ex-suggestions" id="searchSuggestions"></div>
                 </div>
 
                 <!-- FILTER STRIP -->
@@ -438,7 +505,7 @@ function renderEventCard(event: any, index: number): string {
     const hasImage = Boolean(event.imageUrl);
     const status = getEventStatus(event);
     const saved = isSaved(event.publicId);
-    const numericPrice = parsePriceValue(event.price);
+    const numericPrice = getEventPrice(event);
     const priceLabel = numericPrice === 0 ? "Free" : `₦${numericPrice.toLocaleString()}`;
     const isOnline = isOnlineEvent(event);
 
@@ -490,7 +557,7 @@ function renderEventCard(event: any, index: number): string {
                     ${progress.capacity > 0 ? `
                         <div class="ex-capacity">
                             <div class="ex-cap-bar"><span style="width:${progress.ratio}%"></span></div>
-                            <span class="ex-cap-text">${progress.ratio}% filled</span>
+                            <span class="ex-cap-text">${progress.capacity - progress.sold > 0 ? `${(progress.capacity - progress.sold).toLocaleString()} left` : "Sold out"}</span>
                         </div>
                     ` : ""}
                 </div>
@@ -515,7 +582,7 @@ function renderPagination(totalPages: number) {
     root.querySelector<HTMLElement>("[data-page-nav='next']")?.addEventListener("click", () => { state.page = Math.min(totalPages, state.page + 1); renderExploreUi(); window.scrollTo({ top: 0, behavior: "smooth" }); });
 }
 
-// ── Global dropdown close — registered exactly once ───────────────────────
+// ── Global dropdown delegation — registered once ───────────────────────────
 let _globalDropdownsReady = false;
 
 function closeAllDropdowns() {
@@ -526,14 +593,12 @@ function initDropdownDelegation() {
     if (_globalDropdownsReady) return;
     _globalDropdownsReady = true;
 
-    // Outside click → close all
     document.addEventListener("click", (e) => {
         if (!(e.target as HTMLElement).closest(".ex-dropdown")) {
             closeAllDropdowns();
         }
     });
 
-    // Trigger click → toggle panel
     document.addEventListener("click", (e) => {
         const trigger = (e.target as HTMLElement).closest<HTMLElement>(".ex-dd-trigger");
         if (!trigger) return;
@@ -545,7 +610,6 @@ function initDropdownDelegation() {
         if (!isOpen) dd?.classList.add("open");
     });
 
-    // Item click → update state
     document.addEventListener("click", (e) => {
         const item = (e.target as HTMLElement).closest<HTMLElement>(".ex-dd-item");
         if (!item) return;
@@ -571,7 +635,5 @@ function setupExploreInteractions() {
     input?.addEventListener("focus", () => { if (getSuggestions(allEvents).length) document.getElementById("searchSuggestions")?.classList.add("show"); });
     savedOnlyBtn?.addEventListener("click", () => { state.savedOnly = !state.savedOnly; state.page = 1; renderExploreUi(); });
 
-    // Wire up all custom dropdown behaviour via delegation (safe to call multiple times)
     initDropdownDelegation();
 }
-

@@ -29,10 +29,8 @@ export function renderNavbar(root: HTMLElement) {
 
 function renderHomeNavbar() {
     const loggedIn = isLoggedIn();
-    const creator = isCreator();
     const profile = getCurrentUserProfile();
     const dashboardTarget = loggedIn ? "/dashboard" : "/login";
-    const eventsTarget = loggedIn && creator ? "/my-events" : "/explore";
 
     return `
         <div class="nav-shell home-shell">
@@ -45,18 +43,20 @@ function renderHomeNavbar() {
                 </span>
             </button>
 
-            <div class="home-center-pill">
-                <nav class="nav-links home-links">
-                    <button class="nav-link" type="button" data-scroll-target="home-features">Features</button>
-                    <button class="nav-link" type="button" data-scroll-target="home-discover">Discover</button>
-                    <button class="nav-link" type="button" data-scroll-target="home-how">How it works</button>
-                    <button class="nav-link" type="button" data-route="${eventsTarget}">Events</button>
-                </nav>
-            </div>
+            <nav class="nav-links home-links home-nav-main" aria-label="Primary">
+                <button class="nav-link active" type="button" data-route="/">Home</button>
+                <button class="nav-link" type="button" data-scroll-target="home-features">Why Eventful</button>
+                <button class="nav-link" type="button" data-scroll-target="home-discover">Discover</button>
+                <button class="nav-link" type="button" data-route="${dashboardTarget}">Dashboard</button>
+            </nav>
 
-            <div class="nav-actions home-actions">
-                <button class="nav-action dashboard-btn" type="button" data-route="${dashboardTarget}">
-                    Dashboard
+            <div class="nav-actions home-actions home-cta-actions">
+                <button class="nav-action ghost-btn home-explore-btn" type="button" data-route="/explore">
+                    Explore
+                </button>
+
+                <button class="nav-action dashboard-btn home-create-btn" type="button" data-route="/create">
+                    Create event
                 </button>
 
                 ${loggedIn ? `
@@ -84,6 +84,7 @@ function renderStandardNavbar(path: string) {
     const loggedIn = isLoggedIn();
     const creator = isCreator();
     const profile = getCurrentUserProfile();
+    const dashboardTarget = loggedIn ? "/dashboard" : "/login";
 
     return `
         <div class="nav-shell standard-shell">
@@ -97,8 +98,9 @@ function renderStandardNavbar(path: string) {
             </button>
 
             <nav class="nav-links standard-links">
-                <button class="nav-link ${path === "/dashboard" ? "active" : ""}" type="button" data-route="${loggedIn ? "/dashboard" : "/login"}">Dashboard</button>
+                <button class="nav-link ${path === "/" ? "active" : ""}" type="button" data-route="/">Home</button>
                 <button class="nav-link ${path === "/explore" ? "active" : ""}" type="button" data-route="/explore">Explore</button>
+                <button class="nav-link ${path === "/dashboard" ? "active" : ""}" type="button" data-route="${dashboardTarget}">Dashboard</button>
                 <button class="nav-link ${path === "/create" ? "active" : ""}" type="button" data-route="/create">Create</button>
                 ${loggedIn && creator ? `
                     <button class="nav-link ${path === "/my-events" ? "active" : ""}" type="button" data-route="/my-events">My events</button>

@@ -1,612 +1,806 @@
 import { getEvent } from "../../api/events.api";
-import { showMessage } from "../../components/notify/notify";
 import { navigate } from "../../router";
-import {
-    clearReminderPreset,
-    getAlertPreference,
-    getReminderPreset,
-    isEventSaved,
-    setReminderPreset,
-    toggleSavedEvent,
-    updateAlertPreference,
-} from "../../utils/event-engagement";
-import type { ReminderPreset } from "../../utils/event-engagement";
+import { showMessage } from "../../components/notify/notify";
 import "./event-details.css";
 
-type TicketTier = {
-    name?: string;
-    price?: string | number;
-    quantity?: string | number;
-    isFree?: boolean;
-    description?: string;
-};
+// ── localStorage keys ──────────────────────────────
+const SAVED_KEY = "eventful:saved-events";
+const REMINDERS_KEY = "eventful:reminders";
+const NOTIF_KEY = "eventful:notifications";
 
-type AgendaItem = {
-    title?: string;
-    startTime?: string;
-    endTime?: string;
-    host?: string;
-    description?: string;
-};
-
-type EventRecord = {
-    id?: string;
-    publicId?: string;
-    title?: string;
-    summary?: string;
-    description?: string;
-    organizer?: string;
-    eventType?: string;
-    category?: string;
-    imageUrl?: string;
-    date?: string;
-    endDate?: string;
-    locationType?: string;
-    venueAddress?: string;
-    meetingLink?: string;
-    latitude?: number;
-    longitude?: number;
-    agenda?: AgendaItem[];
-    tickets?: TicketTier[];
-    ticketsSold?: number;
-    bookingsCount?: number;
-    status?: string;
-};
-
-function getEventKey(event: EventRecord) {
-    return String(event.publicId || event.id || event.title || "event");
+// ── Helpers ────────────────────────────────────────
+function getSavedIds(): string[] {
+    try { return JSON.parse(localStorage.getItem(SAVED_KEY) || "[]"); } catch { return []; }
 }
 
-function parsePriceValue(value: unknown) {
-    if (typeof value === "number") return Number.isFinite(value) ? value : 0;
-
-    if (typeof value === "string") {
-        const cleaned = value.replace(/[^\d.]/g, "");
-        const parsed = Number(cleaned);
-        return Number.isFinite(parsed) ? parsed : 0;
-    }
-
-    return 0;
+function toggleSaved(publicId: string): boolean {
+    const ids = new Set(getSavedIds());
+    const wasSaved = ids.has(publicId);
+    wasSaved ? ids.delete(publicId) : ids.add(publicId);
+    localStorage.setItem(SAVED_KEY, JSON.stringify([...ids]));
+    return !wasSaved;
 }
 
-function formatPrice(value: unknown) {
-    const amount = parsePriceValue(value);
-    return amount > 0 ? `NGN ${amount.toLocaleString()}` : "Free";
+function isSaved(publicId: string): boolean {
+    return getSavedIds().includes(publicId);
 }
 
-function formatLongDate(dateValue?: string) {
-    if (!dateValue) return "Date to be announced";
-
-    return new Intl.DateTimeFormat("en-NG", {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-    }).format(new Date(dateValue));
+function getReminders(): Record<string, string[]> {
+    try { return JSON.parse(localStorage.getItem(REMINDERS_KEY) || "{}"); } catch { return {}; }
 }
 
-function formatTime(dateValue?: string) {
-    if (!dateValue) return "Time to be announced";
-
-    return new Intl.DateTimeFormat("en-NG", {
-        hour: "numeric",
-        minute: "2-digit",
-    }).format(new Date(dateValue));
+function setReminder(publicId: string, timing: string): void {
+    const reminders = getReminders();
+    if (!reminders[publicId]) reminders[publicId] = [];
+    if (!reminders[publicId].includes(timing)) reminders[publicId].push(timing);
+    localStorage.setItem(REMINDERS_KEY, JSON.stringify(reminders));
 }
 
-function formatTimeRange(start?: string, end?: string) {
-    if (!start && !end) return "Time to be announced";
-    if (!end) return formatTime(start);
-
-    return `${formatTime(start)} - ${formatTime(end)}`;
+function removeReminder(publicId: string, timing: string): void {
+    const reminders = getReminders();
+    if (!reminders[publicId]) return;
+    reminders[publicId] = reminders[publicId].filter((t: string) => t !== timing);
+    localStorage.setItem(REMINDERS_KEY, JSON.stringify(reminders));
 }
 
-function isOnlineEvent(event: EventRecord) {
-    const locationType = String(event.locationType || "").toLowerCase();
-    return Boolean(event.meetingLink) || locationType === "online";
+function hasReminder(publicId: string, timing: string): boolean {
+    const reminders = getReminders();
+    return (reminders[publicId] || []).includes(timing);
 }
 
-function getLocationLabel(event: EventRecord) {
-    return event.venueAddress || (isOnlineEvent(event) ? "Online access" : "Venue to be announced");
+function getNotifPrefs(): Record<string, Record<string, boolean>> {
+    try { return JSON.parse(localStorage.getItem(NOTIF_KEY) || "{}"); } catch { return {}; }
 }
 
-function getPrimaryTicket(event: EventRecord) {
-    if (Array.isArray(event.tickets) && event.tickets.length > 0) {
-        return event.tickets.find((ticket) => !ticket.isFree && parsePriceValue(ticket.price) > 0) || event.tickets[0];
-    }
-
-    return null;
+function setNotifPref(publicId: string, key: string, val: boolean): void {
+    const prefs = getNotifPrefs();
+    if (!prefs[publicId]) prefs[publicId] = {};
+    prefs[publicId][key] = val;
+    localStorage.setItem(NOTIF_KEY, JSON.stringify(prefs));
 }
 
-function getPrimaryPriceLabel(event: EventRecord) {
-    const primaryTicket = getPrimaryTicket(event);
-    if (!primaryTicket) return "Pricing unavailable";
-
-    return primaryTicket.isFree || parsePriceValue(primaryTicket.price) === 0
-        ? "Free"
-        : formatPrice(primaryTicket.price);
+function getNotifPref(publicId: string, key: string): boolean {
+    const prefs = getNotifPrefs();
+    return prefs[publicId]?.[key] ?? false;
 }
 
-function getPrimaryTicketNote(event: EventRecord) {
-    const primaryTicket = getPrimaryTicket(event);
-    const quantity = Number(primaryTicket?.quantity || 0);
+// ── Toast system ───────────────────────────────────
+let toastTimer: ReturnType<typeof setTimeout> | null = null;
 
-    if (primaryTicket?.name && quantity > 0) {
-        return `${primaryTicket.name} · ${quantity.toLocaleString()} spots`;
-    }
-
-    if (primaryTicket?.name) {
-        return primaryTicket.name;
-    }
-
-    const ticketCount = getTicketTiers(event).length;
-    return ticketCount
-        ? `${ticketCount} ticket option${ticketCount === 1 ? "" : "s"} available`
-        : "Ticket details will appear when pricing is added";
-}
-
-function getPrimaryActionLabel(event: EventRecord) {
-    const primaryTicket = getPrimaryTicket(event);
-
-    if (!primaryTicket) return "Save for later";
-    if (primaryTicket.isFree || parsePriceValue(primaryTicket.price) === 0) return "Reserve free spot";
-
-    return "Get ticket";
-}
-
-function getTicketTiers(event: EventRecord) {
-    if (Array.isArray(event.tickets) && event.tickets.length > 0) {
-        return event.tickets;
-    }
-
-    return [];
-}
-
-function getTotalTicketQuantity(event: EventRecord) {
-    return getTicketTiers(event).reduce((total, ticket) => {
-        const quantity = Number(ticket.quantity || 0);
-        return total + (Number.isFinite(quantity) ? quantity : 0);
-    }, 0);
-}
-
-function getAvailability(event: EventRecord) {
-    const total = getTotalTicketQuantity(event);
-    const sold = Number(event.ticketsSold || event.bookingsCount || 0);
-
-    if (!total) {
-        return {
-            label: getTicketTiers(event).length ? `${getTicketTiers(event).length} ticket option${getTicketTiers(event).length === 1 ? "" : "s"}` : "Tickets available",
-            progressLabel: "",
-            ratio: 0,
-        };
-    }
-
-    const remaining = Math.max(total - sold, 0);
-    const ratio = Math.min(100, Math.round((sold / total) * 100));
-
-    return {
-        label: `${remaining} ticket${remaining === 1 ? "" : "s"} left`,
-        progressLabel: `${sold} of ${total} claimed`,
-        ratio,
+function showToast(message: string, type: "success" | "info" | "error" = "success"): void {
+    const icons = {
+        success: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6L9 17L4 12"/></svg>`,
+        info: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg>`,
+        error: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>`,
     };
+
+    const existing = document.querySelector(".ed-toast");
+    if (existing) existing.remove();
+
+    const toast = document.createElement("div");
+    toast.className = `ed-toast ${type}`;
+    toast.innerHTML = `
+        <span class="ed-toast-icon">${icons[type]}</span>
+        <span>${message}</span>
+    `;
+    document.body.appendChild(toast);
+
+    requestAnimationFrame(() => toast.classList.add("show"));
+
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+        toast.classList.remove("show");
+        setTimeout(() => toast.remove(), 350);
+    }, 3000);
 }
 
-function getEventStatus(event: EventRecord) {
-    const total = getTotalTicketQuantity(event);
-    const sold = Number(event.ticketsSold || event.bookingsCount || 0);
-    const tiers = getTicketTiers(event);
-
-    if (String(event.status || "").toUpperCase() === "CANCELLED") return "Cancelled";
-    if (total > 0 && sold >= total) return "Sold out";
-    if (total > 0 && sold / total >= 0.8) return "Selling fast";
-    if (getPrimaryTicket(event)?.isFree || (tiers.length > 0 && tiers.every((ticket) => ticket.isFree || parsePriceValue(ticket.price) === 0))) return "Free entry";
-
-    return "Open now";
+// ── Date/time formatting ───────────────────────────
+function formatDate(d: string): string {
+    return new Date(d).toLocaleDateString(undefined, {
+        weekday: "long", year: "numeric", month: "long", day: "numeric"
+    });
 }
 
-function getMapUrl(event: EventRecord) {
-    if (typeof event.latitude === "number" && typeof event.longitude === "number") {
-        return `https://www.google.com/maps?q=${event.latitude},${event.longitude}`;
-    }
-
-    const location = encodeURIComponent(getLocationLabel(event));
-    return `https://www.google.com/maps/search/?api=1&query=${location}`;
+function formatTime(d: string): string {
+    return new Date(d).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
-function createCalendarFile(event: EventRecord) {
-    const startDate = event.date ? new Date(event.date) : new Date();
-    const endDate = event.endDate ? new Date(event.endDate) : new Date(startDate.getTime() + 2 * 60 * 60 * 1000);
-    const formatIcsDate = (date: Date) => date.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}Z$/, "Z");
+function formatShortDate(d: string): string {
+    return new Date(d).toLocaleDateString(undefined, {
+        month: "short", day: "numeric", year: "numeric"
+    });
+}
 
-    const lines = [
-        "BEGIN:VCALENDAR",
-        "VERSION:2.0",
-        "PRODID:-//Eventful//Event Details//EN",
-        "BEGIN:VEVENT",
-        `UID:${getEventKey(event)}@eventful`,
-        `DTSTAMP:${formatIcsDate(new Date())}`,
-        `DTSTART:${formatIcsDate(startDate)}`,
-        `DTEND:${formatIcsDate(endDate)}`,
-        `SUMMARY:${String(event.title || "Eventful event").replace(/\n/g, " ")}`,
-        `DESCRIPTION:${String(event.summary || event.description || "").replace(/\n/g, " ")}`,
-        `LOCATION:${getLocationLabel(event).replace(/\n/g, " ")}`,
-        "END:VEVENT",
-        "END:VCALENDAR",
+// ── Build category gradient (consistent with explore) ──
+function buildFallbackStyle(event: any): string {
+    if (event.imageUrl) return `background-image: url('${event.imageUrl}')`;
+    const source = (event.title || "event").toLowerCase();
+    let t = 0;
+    for (let i = 0; i < source.length; i++) t += source.charCodeAt(i);
+    const palettes = [
+        "linear-gradient(135deg, #0f1e3a 0%, #1a1040 50%, #0d2233 100%)",
+        "linear-gradient(135deg, #0d1b2a 0%, #1b4332 50%, #2d6a4f 100%)",
+        "linear-gradient(135deg, #1a0a2e 0%, #2d1b69 50%, #11998e 100%)",
+        "linear-gradient(135deg, #2c0a1e 0%, #6b1a3a 50%, #c0392b 100%)",
+        "linear-gradient(135deg, #0a2a1e 0%, #1a4d3a 50%, #27ae60 100%)",
     ];
-
-    const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${String(event.title || "event").replace(/[^\w-]+/g, "-").toLowerCase() || "eventful-event"}.ics`;
-    link.click();
-    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return `background: ${palettes[t % palettes.length]}`;
 }
 
-function renderIcon(kind: string) {
-    const icons: Record<string, string> = {
-        calendar: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="16" rx="3" stroke="currentColor" stroke-width="1.7"/><path d="M8 2.8v3.8M16 2.8v3.8M3.5 9.5h17" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
-        clock: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="8.5" stroke="currentColor" stroke-width="1.7"/><path d="M12 7.8v4.7l3.2 1.8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-        location: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 21s6.5-5.8 6.5-11.1a6.5 6.5 0 1 0-13 0C5.5 15.2 12 21 12 21Z" stroke="currentColor" stroke-width="1.7"/><circle cx="12" cy="10" r="2.4" stroke="currentColor" stroke-width="1.7"/></svg>`,
-        ticket: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h11A2.5 2.5 0 0 1 20 8.5V10a2 2 0 0 0 0 4v1.5A2.5 2.5 0 0 1 17.5 18h-11A2.5 2.5 0 0 1 4 15.5V14a2 2 0 1 0 0-4V8.5Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9.2 8v8M14.8 8v8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
-        share: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5M5 14.5v4a1.5 1.5 0 0 0 1.5 1.5h11a1.5 1.5 0 0 0 1.5-1.5v-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-        bookmark: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6 4.5h12a1 1 0 0 1 1 1V21l-7-4-7 4V5.5a1 1 0 0 1 1-1Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>`,
-        bell: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M6.5 16.5h11l-1.2-1.7a5.4 5.4 0 0 1-.9-3V10a3.4 3.4 0 1 0-6.8 0v1.8a5.4 5.4 0 0 1-.9 3l-1.2 1.7Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M10.2 18.6a2.1 2.1 0 0 0 3.6 0" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`,
-        link: `<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M10 14 14 10M8.5 16a3.5 3.5 0 0 1 0-5l2-2a3.5 3.5 0 1 1 5 5l-1 1M15.5 8a3.5 3.5 0 0 1 0 5l-2 2a3.5 3.5 0 0 1-5-5l1-1" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-    };
-
-    return icons[kind] || "";
-}
-
+// ── Main render ────────────────────────────────────
 export async function renderEventDetails(publicId: string) {
     const app = document.getElementById("app")!;
-    app.innerHTML = `<div class="event-details-loading">Loading event details...</div>`;
+
+    // Loading state
+    app.innerHTML = `
+        <div class="ed-page">
+            <div class="ed-ambient">
+                <div class="ed-orb ed-orb-1"></div>
+                <div class="ed-orb ed-orb-2"></div>
+            </div>
+            <div style="display:flex;align-items:center;justify-content:center;min-height:80vh;color:#4a5568;font-family:'Sora',sans-serif;font-size:0.9rem;gap:12px;">
+                <div style="width:20px;height:20px;border-radius:50%;border:2px solid rgba(126,234,234,0.2);border-top-color:#7eeaea;animation:spin 0.8s linear infinite;"></div>
+                Loading event…
+            </div>
+            <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+        </div>
+    `;
 
     try {
         const event = await getEvent(publicId);
-        const eventKey = getEventKey(event);
-        const reminderPreset = getReminderPreset(eventKey);
-        const alertPreference = getAlertPreference(eventKey);
-        const ticketTiers = getTicketTiers(event);
-        const availability = getAvailability(event);
-        const primaryTicket = getPrimaryTicket(event);
-        const agenda = Array.isArray(event.agenda) ? event.agenda : [];
-
-        app.innerHTML = `
-            <div class="event-details-page">
-                <div class="event-aura aura-one"></div>
-                <div class="event-aura aura-two"></div>
-
-                <div class="event-details-shell">
-                    <a class="event-back-link" href="/explore" id="eventBackLink">Back to explore</a>
-
-                    <section class="event-top-grid">
-                        <div class="event-media-column">
-                            <article class="event-poster-card">
-                                <div class="event-poster ${event.imageUrl ? "has-image" : "no-image"}" ${event.imageUrl ? `style="background-image:url('${event.imageUrl}')"` : ""}>
-                                    ${event.imageUrl ? "" : `<span>${String(event.title || "E").charAt(0).toUpperCase()}</span>`}
-                                </div>
-                                <div class="event-poster-tag">${event.category || "Event"}</div>
-                            </article>
-
-                            <article class="event-facts-card">
-                                <div class="fact-row">
-                                    ${renderIcon("calendar")}
-                                    <div>
-                                        <span>Date & time</span>
-                                        <strong>${formatLongDate(event.date)}</strong>
-                                        <p>${formatTimeRange(event.date, event.endDate)}</p>
-                                    </div>
-                                </div>
-
-                                <div class="fact-row">
-                                    ${isOnlineEvent(event) ? renderIcon("link") : renderIcon("location")}
-                                    <div>
-                                        <span>${isOnlineEvent(event) ? "Access" : "Location"}</span>
-                                        <strong>${getLocationLabel(event)}</strong>
-                                    </div>
-                                </div>
-
-                                <div class="fact-row">
-                                    ${renderIcon("ticket")}
-                                    <div>
-                                        <span>Availability</span>
-                                        <strong>${availability.label}</strong>
-                                        ${availability.progressLabel ? `<p>${availability.progressLabel}</p>` : ""}
-                                        ${availability.progressLabel ? `
-                                            <div class="availability-bar">
-                                                <span style="width:${availability.ratio}%"></span>
-                                            </div>
-                                        ` : ""}
-                                    </div>
-                                </div>
-                            </article>
-                        </div>
-
-                        <div class="event-content-column">
-                            <article class="event-title-card">
-                                <div class="title-badges">
-                                    <span class="event-badge">${getEventStatus(event)}</span>
-                                    ${event.eventType ? `<span class="event-badge muted">${event.eventType}</span>` : ""}
-                                </div>
-
-                                <h1>${event.title || "Untitled event"}</h1>
-
-                                <div class="organizer-row">
-                                    <div class="organizer-avatar">${String(event.organizer || "EV").split(" ").map((part) => part.charAt(0)).join("").slice(0, 2).toUpperCase()}</div>
-                                    <div class="organizer-copy">
-                                        <span>Organized by</span>
-                                        <strong>${event.organizer || "Eventful Creator"}</strong>
-                                    </div>
-                                </div>
-
-                                <p class="event-summary">${event.summary || event.description || "Event details will appear here once the organizer adds more information."}</p>
-                            </article>
-
-                            <article class="event-panel">
-                                <span class="panel-label">About this event</span>
-                                <p class="panel-copy">${event.description || event.summary || "More information about the event will appear here once it is available."}</p>
-                            </article>
-
-                            <article class="booking-card">
-                                <div class="booking-top">
-                                    <div>
-                                        <span class="panel-label">Ticket price</span>
-                                        <strong>${getPrimaryPriceLabel(event)}</strong>
-                                    </div>
-                                    <span class="booking-status">${getEventStatus(event)}</span>
-                                </div>
-
-                                <p class="booking-note">${getPrimaryTicketNote(event)}</p>
-
-                                <div class="booking-insights">
-                                    <div class="booking-insight">
-                                        <span>Availability</span>
-                                        <strong>${availability.label}</strong>
-                                    </div>
-                                    ${availability.progressLabel ? `
-                                        <div class="booking-insight">
-                                            <span>Progress</span>
-                                            <strong>${availability.progressLabel}</strong>
-                                        </div>
-                                    ` : ""}
-                                </div>
-
-                                ${availability.progressLabel ? `
-                                    <div class="availability-bar booking-availability-bar">
-                                        <span style="width:${availability.ratio}%"></span>
-                                    </div>
-                                ` : ""}
-
-                                <button class="primary-action" type="button" id="reserveTicketBtn">
-                                    ${renderIcon("ticket")}
-                                    <span>${getPrimaryActionLabel(event)}</span>
-                                </button>
-
-                                <div class="utility-actions">
-                                    <button class="utility-btn" type="button" id="saveEventBtn">${renderIcon("bookmark")}<span>Save</span></button>
-                                    <button class="utility-btn" type="button" id="shareEventBtn">${renderIcon("share")}<span>Share</span></button>
-                                    <button class="utility-btn" type="button" id="calendarEventBtn">${renderIcon("calendar")}<span>Add to calendar</span></button>
-                                    <button class="utility-btn" type="button" id="openVenueBtn">${isOnlineEvent(event) ? `${renderIcon("link")}<span>Open access link</span>` : `${renderIcon("location")}<span>Get directions</span>`}</button>
-                                </div>
-
-                                <div class="booking-subgrid">
-                                    <section class="mini-panel">
-                                        <div class="mini-panel-head">
-                                            <span class="panel-label">Reminder</span>
-                                            <span class="mini-status" id="reminderStatusLabel">${reminderPreset ? `Set: ${reminderPreset}` : "Not set"}</span>
-                                        </div>
-                                        <h3>Notify me before it starts</h3>
-                                        <div class="chip-row">
-                                            ${(["24h", "3h", "30m"] as ReminderPreset[]).map((preset) => `
-                                                <button class="chip-btn ${reminderPreset === preset ? "active" : ""}" type="button" data-reminder-preset="${preset}">${preset}</button>
-                                            `).join("")}
-                                        </div>
-                                        <button class="subtle-action" type="button" id="clearReminderBtn">Clear reminder</button>
-                                    </section>
-
-                                    <section class="mini-panel">
-                                        <div class="mini-panel-head">
-                                            <span class="panel-label">Notifications</span>
-                                            <button class="toggle-btn ${alertPreference.enabled ? "active" : ""}" type="button" id="alertToggleBtn">${alertPreference.enabled ? "On" : "Off"}</button>
-                                        </div>
-                                        <h3>Alert preferences</h3>
-                                        <div class="chip-row chip-row-stack">
-                                            <button class="chip-btn ${alertPreference.productUpdates ? "active" : ""}" type="button" data-alert-key="productUpdates">${renderIcon("bell")}<span>Event updates</span></button>
-                                            <button class="chip-btn ${alertPreference.ticketDrops ? "active" : ""}" type="button" data-alert-key="ticketDrops">${renderIcon("ticket")}<span>Ticket alerts</span></button>
-                                        </div>
-                                        <p class="mini-note">Stored locally for now until your backend notification flow is connected.</p>
-                                    </section>
-                                </div>
-                            </article>
-                        </div>
-                    </section>
-
-                    ${ticketTiers.length ? `
-                        <section class="event-section">
-                            <span class="section-kicker">Tickets</span>
-                            <h2>Available ticket options</h2>
-                            <div class="ticket-list">
-                                ${ticketTiers.map((ticket) => `
-                                    <article class="ticket-row">
-                                        <div>
-                                            <strong>${ticket.name || "Ticket option"}</strong>
-                                            ${ticket.description ? `<p>${ticket.description}</p>` : ""}
-                                        </div>
-                                        <div class="ticket-side">
-                                            <span class="ticket-price">${ticket.isFree ? "Free" : formatPrice(ticket.price)}</span>
-                                            ${Number(ticket.quantity || 0) > 0 ? `<span class="ticket-qty">${Number(ticket.quantity).toLocaleString()} spots</span>` : ""}
-                                        </div>
-                                    </article>
-                                `).join("")}
-                            </div>
-                        </section>
-                    ` : ""}
-
-                    ${agenda.length ? `
-                        <section class="event-section">
-                            <span class="section-kicker">Schedule</span>
-                            <h2>Event timeline</h2>
-                            <div class="timeline-list">
-                                ${agenda.map((item, index) => `
-                                    <article class="timeline-item">
-                                        <div class="timeline-index">${String(index + 1).padStart(2, "0")}</div>
-                                        <div class="timeline-copy">
-                                            <span class="timeline-time">${item.startTime || "Scheduled"}${item.endTime ? ` - ${item.endTime}` : ""}</span>
-                                            <strong>${item.title || "Event segment"}</strong>
-                                            ${item.description ? `<p>${item.description}</p>` : ""}
-                                            ${item.host ? `<span class="timeline-host">Hosted by ${item.host}</span>` : ""}
-                                        </div>
-                                    </article>
-                                `).join("")}
-                            </div>
-                        </section>
-                    ` : ""}
-                </div>
-            </div>
-        `;
-
-        setupActions(event, eventKey, getMapUrl(event));
+        renderPage(app, event, publicId);
     } catch {
         showMessage("Failed to load event", "error");
         navigate("/explore");
     }
 }
 
-function setupActions(event: EventRecord, eventKey: string, mapUrl: string) {
-    const saveButton = document.getElementById("saveEventBtn");
-    const shareButton = document.getElementById("shareEventBtn");
-    const calendarButton = document.getElementById("calendarEventBtn");
-    const venueButton = document.getElementById("openVenueBtn");
-    const reserveButton = document.getElementById("reserveTicketBtn");
-    const reminderStatus = document.getElementById("reminderStatusLabel");
-    const alertToggle = document.getElementById("alertToggleBtn");
-    const backLink = document.getElementById("eventBackLink");
+function renderPage(app: HTMLElement, event: any, publicId: string): void {
+    const saved = isSaved(publicId);
+    const hasImage = Boolean(event.imageUrl);
+    const isOnline = Boolean(event.isOnline) || String(event.locationType || "").toLowerCase() === "online" || Boolean(event.meetingLink);
+    const price = Number(event.price || 0);
+    const isFree = price === 0;
+    const capacity = Number(event.capacity || event.totalTickets || 0);
+    const sold = Number(event.ticketsSold || event.bookingsCount || 0);
+    const capRatio = capacity > 0 ? Math.round((sold / capacity) * 100) : 0;
+    const isAlmostFull = capRatio >= 80;
 
-    const syncSavedState = () => {
-        const saved = isEventSaved(eventKey);
-        if (saveButton) {
-            saveButton.classList.toggle("active", saved);
-            saveButton.querySelector("span")!.textContent = saved ? "Saved" : "Save";
+    // Ticket tiers from backend or fallback single tier
+    const tiers: Array<{ name: string; price: number; available: number }> = 
+        (event.tickets && event.tickets.length > 0)
+            ? event.tickets.map((t: any) => ({
+                name: t.name || "General",
+                price: Number(t.price || 0),
+                available: Number(t.quantity || 0) - Number(t.sold || 0),
+            }))
+            : [{ name: isFree ? "Free entry" : "General Admission", price, available: Math.max(0, capacity - sold) }];
+
+    // Agenda items
+    const agenda: any[] = event.agenda || [];
+
+    // Notification preferences
+    const notifUpdates = getNotifPref(publicId, "updates");
+    const notifReminders = getNotifPref(publicId, "reminders");
+
+    app.innerHTML = `
+        <div class="ed-page">
+            <!-- Ambient -->
+            <div class="ed-ambient">
+                <div class="ed-orb ed-orb-1"></div>
+                <div class="ed-orb ed-orb-2"></div>
+            </div>
+
+            <!-- ═══ HERO ═══ -->
+            <section class="ed-hero" id="edHero">
+                <div class="ed-hero-img" id="edHeroImg"
+                    style="${buildFallbackStyle(event)}; background-size:cover; background-position:center;">
+                    ${!hasImage ? `<div class="ed-hero-placeholder"></div>` : ""}
+                </div>
+                <div class="ed-hero-grad"></div>
+
+                <!-- Top-right icon buttons -->
+                <div class="ed-hero-actions">
+                    <button class="ed-icon-btn ${saved ? "active" : ""}" id="edSaveBtn" title="Save event">
+                        <svg viewBox="0 0 24 24" fill="${saved ? "currentColor" : "none"}" stroke="currentColor" stroke-width="1.8">
+                            <path d="M5 3h14a1 1 0 0 1 1 1v16l-8-4.5L4 20V4a1 1 0 0 1 1-1Z" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <button class="ed-icon-btn" id="edShareHeroBtn" title="Share event">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                            <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+                            <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+                            <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Bottom content -->
+                <div class="ed-hero-content">
+                    <div class="ed-hero-top">
+                        <span class="ed-cat-badge">${event.category || "Event"}</span>
+                        ${isAlmostFull ? `<span class="ed-status-live"><span></span>Almost full</span>` : ""}
+                        ${isFree ? `<span class="ed-cat-badge" style="border-color:rgba(126,234,234,0.3);background:rgba(126,234,234,0.12);">Free</span>` : ""}
+                    </div>
+
+                    <h1 class="ed-event-title">${event.title}</h1>
+
+                    <div class="ed-hero-chips">
+                        <span class="ed-hero-chip">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                            ${formatDate(event.date)}
+                        </span>
+                        <span class="ed-hero-chip">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                            ${formatTime(event.date)}${event.endDate ? ` — ${formatTime(event.endDate)}` : ""}
+                        </span>
+                        <span class="ed-hero-chip" id="edHeroLocation" style="${!isOnline && (event.venueAddress || event.location) ? "cursor:pointer;" : ""}">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                            ${isOnline ? "Online event" : (event.venueAddress || event.location || "Venue TBD")}
+                        </span>
+                        ${event.organizer ? `
+                        <span class="ed-hero-chip">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                            By ${event.organizer}
+                        </span>` : ""}
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══ BODY ═══ -->
+            <div class="ed-body">
+
+                <!-- LEFT COLUMN -->
+                <div class="ed-left">
+
+                    <!-- About -->
+                    ${event.description || event.summary ? `
+                    <div class="ed-panel">
+                        <h2 class="ed-panel-title">About this event</h2>
+                        <p class="ed-about-text">${event.description || event.summary}</p>
+                    </div>` : ""}
+
+                    <!-- Details grid -->
+                    <div class="ed-panel">
+                        <h2 class="ed-panel-title">Event details</h2>
+                        <div class="ed-details-grid">
+                            <div class="ed-detail-item">
+                                <div class="ed-detail-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                </div>
+                                <div>
+                                    <span class="ed-detail-label">Date</span>
+                                    <span class="ed-detail-value">${formatShortDate(event.date)}</span>
+                                </div>
+                            </div>
+                            <div class="ed-detail-item">
+                                <div class="ed-detail-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                                </div>
+                                <div>
+                                    <span class="ed-detail-label">Time</span>
+                                    <span class="ed-detail-value">${formatTime(event.date)}${event.endDate ? ` – ${formatTime(event.endDate)}` : ""}</span>
+                                </div>
+                            </div>
+                            <div class="ed-detail-item">
+                                <div class="ed-detail-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                </div>
+                                <div>
+                                    <span class="ed-detail-label">${isOnline ? "Format" : "Location"}</span>
+                                    <span class="ed-detail-value">
+                                        ${isOnline
+                                            ? `Online event${event.meetingLink ? `<br><a href="${event.meetingLink}" target="_blank" rel="noopener">Join link →</a>` : ""}`
+                                            : (() => {
+                                                const address = event.venueAddress || event.location || "";
+                                                const lat = event.latitude;
+                                                const lng = event.longitude;
+                                                const mapsQuery = lat && lng
+                                                    ? `https://www.google.com/maps?q=${lat},${lng}`
+                                                    : address
+                                                        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
+                                                        : null;
+                                                return address
+                                                    ? `${address}${mapsQuery ? `<br><a href="${mapsQuery}" target="_blank" rel="noopener" class="ed-directions-link">📍 Get directions →</a>` : ""}`
+                                                    : "Venue TBD";
+                                              })()}
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="ed-detail-item">
+                                <div class="ed-detail-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h11A2.5 2.5 0 0 1 20 8.5V10a2 2 0 0 0 0 4v1.5A2.5 2.5 0 0 1 17.5 18h-11A2.5 2.5 0 0 1 4 15.5V14a2 2 0 1 0 0-4V8.5Z"/></svg>
+                                </div>
+                                <div>
+                                    <span class="ed-detail-label">Price</span>
+                                    <span class="ed-detail-value">${isFree ? "Free" : `₦${price.toLocaleString()}`}</span>
+                                </div>
+                            </div>
+                            ${event.eventType ? `
+                            <div class="ed-detail-item">
+                                <div class="ed-detail-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83"/></svg>
+                                </div>
+                                <div>
+                                    <span class="ed-detail-label">Type</span>
+                                    <span class="ed-detail-value">${event.eventType}</span>
+                                </div>
+                            </div>` : ""}
+                            ${capacity > 0 ? `
+                            <div class="ed-detail-item" style="grid-column:1/-1;">
+                                <div class="ed-detail-icon">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                                </div>
+                                <div style="flex:1;">
+                                    <span class="ed-detail-label">Capacity</span>
+                                    <div class="ed-capacity-section">
+                                        <div class="ed-cap-header">
+                                            <span class="ed-cap-label">${sold} of ${capacity} spots filled</span>
+                                            <span class="ed-cap-count">${capRatio}%</span>
+                                        </div>
+                                        <div class="ed-cap-bar">
+                                            <div class="ed-cap-fill ${isAlmostFull ? "hot" : ""}" style="width:${capRatio}%"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>` : ""}
+                        </div>
+                    </div>
+
+                    <!-- Agenda -->
+                    ${agenda.length > 0 ? `
+                    <div class="ed-panel">
+                        <h2 class="ed-panel-title">Schedule</h2>
+                        <div class="ed-agenda-list">
+                            ${agenda.map((slot: any) => `
+                            <div class="ed-agenda-slot">
+                                <div class="ed-agenda-time">${slot.startTime || ""}${slot.endTime ? ` – ${slot.endTime}` : ""}</div>
+                                <div class="ed-agenda-info">
+                                    <h4>${slot.title}</h4>
+                                    ${slot.description ? `<p>${slot.description}</p>` : ""}
+                                    ${slot.host ? `<span class="ed-agenda-host">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                                        ${slot.host}
+                                    </span>` : ""}
+                                </div>
+                            </div>`).join("")}
+                        </div>
+                    </div>` : ""}
+
+                    <!-- Organizer -->
+                    ${event.organizer ? `
+                    <div class="ed-panel">
+                        <h2 class="ed-panel-title">Organizer</h2>
+                        <div class="ed-organizer">
+                            <div class="ed-org-avatar">${event.organizer.charAt(0).toUpperCase()}</div>
+                            <div>
+                                <p class="ed-org-name">${event.organizer}</p>
+                                <p class="ed-org-label">Event organizer</p>
+                            </div>
+                        </div>
+                    </div>` : ""}
+
+                </div>
+
+                <!-- RIGHT SIDEBAR -->
+                <div class="ed-sidebar">
+
+                    <!-- Main action card -->
+                    <div class="ed-action-card">
+                        <!-- Price -->
+                        <div class="ed-price-row">
+                            ${isFree
+                                ? `<span class="ed-price-free">Free</span>`
+                                : `<span class="ed-price-main">₦${price.toLocaleString()}</span><span class="ed-price-sub">/ ticket</span>`}
+                        </div>
+
+                        <!-- Ticket tiers -->
+                        ${tiers.length > 1 ? `
+                        <div class="ed-ticket-tiers" id="edTierList">
+                            ${tiers.map((tier, i) => `
+                            <div class="ed-tier ${i === 0 ? "selected" : ""}" data-tier="${i}" data-price="${tier.price}">
+                                <div class="ed-tier-left">
+                                    <span class="ed-tier-name">${tier.name}</span>
+                                    <span class="ed-tier-avail">${tier.available > 0 ? `${tier.available} available` : "Sold out"}</span>
+                                </div>
+                                <span class="ed-tier-price">${tier.price === 0 ? "Free" : `₦${tier.price.toLocaleString()}`}</span>
+                            </div>`).join("")}
+                        </div>` : ""}
+
+                        <!-- Quantity selector -->
+                        <div class="ed-qty-row">
+                            <span class="ed-qty-label">Quantity</span>
+                            <div class="ed-qty-ctrl">
+                                <button class="ed-qty-btn" id="edQtyMinus" ${1 <= 1 ? "disabled" : ""}>−</button>
+                                <span class="ed-qty-val" id="edQtyVal">1</span>
+                                <button class="ed-qty-btn" id="edQtyPlus">+</button>
+                            </div>
+                        </div>
+
+                        <!-- Buy CTA -->
+                        <button class="ed-buy-btn ${isFree ? "free-event" : ""}" id="edBuyBtn">
+                            ${isFree ? "Get Ticket" : "Secure tickets"}
+                        </button>
+
+                        <!-- Mini actions: reminder, notify, share -->
+                        <div class="ed-action-row">
+                            <button class="ed-action-mini" id="edReminderBtn" title="Set reminder">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                                Remind me
+                            </button>
+                            <button class="ed-action-mini" id="edNotifyBtn" title="Notifications">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M22 17H2a3 3 0 0 0 3-3V9a7 7 0 0 1 14 0v5a3 3 0 0 0 3 3Z"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                                Notify me
+                            </button>
+                            <button class="ed-action-mini" id="edShareBtn" title="Share">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                                Share
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Share panel -->
+                    <div class="ed-share-panel" id="edSharePanel">
+                        <p class="ed-share-title">Share this event</p>
+                        <div class="ed-share-link-row">
+                            <input class="ed-share-link-input" id="edShareLinkInput" value="${window.location.href}" readonly />
+                            <button class="ed-share-copy-btn" id="edCopyLinkBtn">Copy</button>
+                        </div>
+                        <div class="ed-share-socials">
+                            <button class="ed-social-btn" id="edShareTwitter">
+                                <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                                X / Twitter
+                            </button>
+                            <button class="ed-social-btn" id="edShareWhatsApp">
+                                <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413z"/></svg>
+                                WhatsApp
+                            </button>
+                            <button class="ed-social-btn" id="edShareFacebook">
+                                <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
+                                Facebook
+                            </button>
+                            <button class="ed-social-btn" id="edShareLinkedIn">
+                                <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+                                LinkedIn
+                            </button>
+                            <button class="ed-social-btn" id="edShareTelegram">
+                                <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+                                Telegram
+                            </button>
+                            <button class="ed-social-btn" id="edShareInstagram">
+                                <svg viewBox="0 0 24 24" fill="currentColor" width="14" height="14"><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/></svg>
+                                Instagram
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Notifications panel -->
+                    <div class="ed-notify-panel" id="edNotifyPanel">
+                        <p class="ed-notify-title">Notifications</p>
+                        <div class="ed-notify-options">
+                            <div class="ed-notify-opt">
+                                <span class="ed-notify-opt-label">Event updates &amp; changes</span>
+                                <label class="ed-toggle">
+                                    <input type="checkbox" id="edNotifUpdates" ${notifUpdates ? "checked" : ""} />
+                                    <span class="ed-toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="ed-notify-opt">
+                                <span class="ed-notify-opt-label">Reminder before event</span>
+                                <label class="ed-toggle">
+                                    <input type="checkbox" id="edNotifReminders" ${notifReminders ? "checked" : ""} />
+                                    <span class="ed-toggle-slider"></span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Reminder card -->
+                    <div class="ed-reminder-card" id="edReminderCard" style="display:none;">
+                        <div class="ed-reminder-header">
+                            <div class="ed-reminder-icon">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                            </div>
+                            <div>
+                                <p class="ed-reminder-title">Set a reminder</p>
+                                <p class="ed-reminder-sub">We'll remind you before the event starts</p>
+                            </div>
+                        </div>
+                        <div class="ed-reminder-opts">
+                            ${["1 hour before", "1 day before", "3 days before", "1 week before"].map(t => `
+                            <button class="ed-reminder-chip ${hasReminder(publicId, t) ? "set" : ""}" data-timing="${t}">
+                                ${hasReminder(publicId, t) ? `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><path d="M20 6L9 17L4 12"/></svg>` : ""}
+                                ${t}
+                                ${hasReminder(publicId, t) ? `<span class="ed-reminder-clear" data-timing="${t}" title="Remove reminder">×</span>` : ""}
+                            </button>
+                            `).join("")}
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <!-- Ticket modal -->
+            <div class="ed-ticket-overlay" id="edTicketOverlay">
+                <div class="ed-ticket-modal">
+                    <div class="ed-modal-top">
+                        <div>
+                            <h2 class="ed-modal-title">${isFree ? "Register" : "Confirm booking"}</h2>
+                            <p class="ed-modal-sub">Review your order before confirming</p>
+                        </div>
+                        <button class="ed-modal-close" id="edModalClose">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg>
+                        </button>
+                    </div>
+                    <div class="ed-modal-summary">
+                        <p class="ed-modal-event-name">${event.title}</p>
+                        <p class="ed-modal-meta" id="edModalMeta">${formatShortDate(event.date)} · ${formatTime(event.date)}</p>
+                    </div>
+                    <div class="ed-modal-total">
+                        <span class="ed-modal-total-label" id="edModalQtyLabel">1 ticket</span>
+                        <span class="ed-modal-total-val" id="edModalTotal">${isFree ? "Free" : `₦${price.toLocaleString()}`}</span>
+                    </div>
+                    <button class="ed-modal-confirm-btn" id="edModalConfirm">
+                        ${isFree ? "Confirm registration" : "Proceed to payment"}
+                    </button>
+                    <p class="ed-modal-note">You'll receive a confirmation email with your ticket</p>
+                </div>
+            </div>
+
+        </div>
+    `;
+
+    // Animate hero image in
+    setTimeout(() => document.getElementById("edHero")?.classList.add("loaded"), 100);
+
+    // Wire up all interactions
+    setupInteractions(event, publicId, tiers, isFree, price, isOnline);
+}
+
+function setupInteractions(
+    event: any,
+    publicId: string,
+    tiers: Array<{ name: string; price: number; available: number }>,
+    isFree: boolean,
+    basePrice: number,
+    isOnline: boolean
+): void {
+
+    let qty = 1;
+    let selectedTierIdx = 0;
+
+    const getSelectedPrice = () => tiers[selectedTierIdx]?.price ?? basePrice;
+    const getTotal = () => getSelectedPrice() * qty;
+
+    // ── Hero location chip → Get Directions ───
+    const heroLocation = document.getElementById("edHeroLocation");
+    if (heroLocation && !isOnline) {
+        const address = event.venueAddress || event.location || "";
+        if (address) {
+            heroLocation.addEventListener("click", () => {
+                const lat = event.latitude;
+                const lng = event.longitude;
+                const url = lat && lng
+                    ? `https://www.google.com/maps?q=${lat},${lng}`
+                    : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
+                window.open(url, "_blank", "noopener");
+            });
         }
-    };
+    }
 
-    const syncReminderState = () => {
-        const reminder = getReminderPreset(eventKey);
-        if (reminderStatus) {
-            reminderStatus.textContent = reminder ? `Set: ${reminder}` : "Not set";
-        }
+    // ── Quantity controls ──────────────────────
+    const qtyVal = document.getElementById("edQtyVal")!;
+    const qtyMinus = document.getElementById("edQtyMinus") as HTMLButtonElement;
+    const qtyPlus = document.getElementById("edQtyPlus") as HTMLButtonElement;
 
-        document.querySelectorAll<HTMLElement>("[data-reminder-preset]").forEach((button) => {
-            button.classList.toggle("active", button.dataset.reminderPreset === reminder);
-        });
-    };
+    function updateQty(): void {
+        qtyVal.textContent = String(qty);
+        qtyMinus.disabled = qty <= 1;
+        updateModal();
+    }
 
-    const syncAlertState = () => {
-        const preference = getAlertPreference(eventKey);
-
-        if (alertToggle) {
-            alertToggle.classList.toggle("active", preference.enabled);
-            alertToggle.textContent = preference.enabled ? "On" : "Off";
-        }
-
-        document.querySelectorAll<HTMLElement>("[data-alert-key]").forEach((button) => {
-            const key = button.dataset.alertKey as "productUpdates" | "ticketDrops" | undefined;
-            button.classList.toggle("active", Boolean(key && preference[key]));
-        });
-    };
-
-    backLink?.addEventListener("click", (eventObject) => {
-        eventObject.preventDefault();
-        navigate("/explore");
+    qtyMinus.addEventListener("click", () => { if (qty > 1) { qty--; updateQty(); } });
+    qtyPlus.addEventListener("click", () => {
+        const maxQty = Math.min(10, tiers[selectedTierIdx]?.available || 10);
+        if (qty < maxQty) { qty++; updateQty(); }
     });
 
-    saveButton?.addEventListener("click", () => {
-        const saved = toggleSavedEvent(eventKey);
-        syncSavedState();
-        showMessage(saved ? "Event saved for later" : "Removed from saved events", "success");
+    // ── Tier selection ─────────────────────────
+    document.querySelectorAll<HTMLElement>(".ed-tier").forEach(tier => {
+        tier.addEventListener("click", () => {
+            document.querySelectorAll(".ed-tier").forEach(t => t.classList.remove("selected"));
+            tier.classList.add("selected");
+            selectedTierIdx = parseInt(tier.dataset.tier || "0");
+            updateModal();
+        });
     });
 
-    shareButton?.addEventListener("click", async () => {
-        const shareUrl = window.location.href;
+    // ── Save / bookmark ────────────────────────
+    const saveBtn = document.getElementById("edSaveBtn")!;
+    saveBtn.addEventListener("click", () => {
+        const nowSaved = toggleSaved(publicId);
+        const icon = saveBtn.querySelector("svg")!;
+        icon.setAttribute("fill", nowSaved ? "currentColor" : "none");
+        saveBtn.classList.toggle("active", nowSaved);
+        showToast(nowSaved ? "Event saved to your bookmarks" : "Removed from bookmarks", nowSaved ? "success" : "info");
+    });
 
-        try {
-            if (navigator.share) {
-                await navigator.share({
-                    title: event.title || "Eventful event",
-                    text: event.summary || event.description || "Check out this event on Eventful.",
-                    url: shareUrl,
-                });
+    // ── Share ──────────────────────────────────
+    const sharePanel = document.getElementById("edSharePanel")!;
+    let sharePanelOpen = false;
+
+    function toggleSharePanel(): void {
+        sharePanelOpen = !sharePanelOpen;
+        sharePanel.classList.toggle("show", sharePanelOpen);
+        const notifyPanel = document.getElementById("edNotifyPanel")!;
+        notifyPanel.classList.remove("show");
+        document.getElementById("edReminderCard")!.style.display = "none";
+        document.querySelectorAll(".ed-action-mini").forEach(b => b.classList.remove("active"));
+        if (sharePanelOpen) document.getElementById("edShareBtn")?.classList.add("active");
+    }
+
+    document.getElementById("edShareBtn")?.addEventListener("click", toggleSharePanel);
+    document.getElementById("edShareHeroBtn")?.addEventListener("click", () => {
+        if (navigator.share) {
+            navigator.share({ title: event.title, url: window.location.href }).catch(() => {});
+        } else {
+            toggleSharePanel();
+        }
+    });
+
+    document.getElementById("edCopyLinkBtn")?.addEventListener("click", () => {
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            const btn = document.getElementById("edCopyLinkBtn")!;
+            btn.textContent = "Copied!";
+            setTimeout(() => (btn.textContent = "Copy"), 2000);
+            showToast("Link copied to clipboard", "success");
+        });
+    });
+
+    const text = encodeURIComponent(`${event.title} — ${window.location.href}`);
+    const url = encodeURIComponent(window.location.href);
+    const titleEnc = encodeURIComponent(event.title);
+
+    document.getElementById("edShareTwitter")?.addEventListener("click", () => {
+        window.open(`https://twitter.com/intent/tweet?text=${text}`, "_blank", "noopener");
+    });
+    document.getElementById("edShareWhatsApp")?.addEventListener("click", () => {
+        window.open(`https://wa.me/?text=${text}`, "_blank", "noopener");
+    });
+    document.getElementById("edShareFacebook")?.addEventListener("click", () => {
+        window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, "_blank", "noopener");
+    });
+    document.getElementById("edShareLinkedIn")?.addEventListener("click", () => {
+        window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}`, "_blank", "noopener");
+    });
+    document.getElementById("edShareTelegram")?.addEventListener("click", () => {
+        window.open(`https://t.me/share/url?url=${url}&text=${titleEnc}`, "_blank", "noopener");
+    });
+    document.getElementById("edShareInstagram")?.addEventListener("click", () => {
+        // Instagram has no direct web share URL — copy link and guide user
+        navigator.clipboard.writeText(window.location.href).then(() => {
+            showToast("Link copied — paste it in your Instagram story or bio!", "success");
+        });
+    });
+
+    // ── Notifications ──────────────────────────
+    const notifyPanel = document.getElementById("edNotifyPanel")!;
+    let notifyPanelOpen = false;
+
+    document.getElementById("edNotifyBtn")?.addEventListener("click", () => {
+        notifyPanelOpen = !notifyPanelOpen;
+        notifyPanel.classList.toggle("show", notifyPanelOpen);
+        sharePanel.classList.remove("show");
+        sharePanelOpen = false;
+        document.getElementById("edReminderCard")!.style.display = "none";
+        document.querySelectorAll(".ed-action-mini").forEach(b => b.classList.remove("active"));
+        if (notifyPanelOpen) document.getElementById("edNotifyBtn")?.classList.add("active");
+    });
+
+    document.getElementById("edNotifUpdates")?.addEventListener("change", (e) => {
+        const val = (e.target as HTMLInputElement).checked;
+        setNotifPref(publicId, "updates", val);
+        showToast(val ? "You'll be notified about event updates" : "Update notifications off", val ? "success" : "info");
+        // TODO: call backend notification API when connected
+    });
+
+    document.getElementById("edNotifReminders")?.addEventListener("change", (e) => {
+        const val = (e.target as HTMLInputElement).checked;
+        setNotifPref(publicId, "reminders", val);
+        showToast(val ? "Reminder notifications enabled" : "Reminder notifications off", val ? "success" : "info");
+        // TODO: call backend notification API when connected
+    });
+
+    // ── Reminders ─────────────────────────────
+    const reminderCard = document.getElementById("edReminderCard")!;
+    let reminderOpen = false;
+
+    document.getElementById("edReminderBtn")?.addEventListener("click", () => {
+        reminderOpen = !reminderOpen;
+        reminderCard.style.display = reminderOpen ? "block" : "none";
+        sharePanel.classList.remove("show");
+        notifyPanel.classList.remove("show");
+        sharePanelOpen = false;
+        notifyPanelOpen = false;
+        document.querySelectorAll(".ed-action-mini").forEach(b => b.classList.remove("active"));
+        if (reminderOpen) document.getElementById("edReminderBtn")?.classList.add("active");
+    });
+
+    document.querySelectorAll<HTMLElement>(".ed-reminder-chip").forEach(chip => {
+        chip.addEventListener("click", (e) => {
+            const target = e.target as HTMLElement;
+            const timing = chip.dataset.timing!;
+
+            // Clicked the clear × button
+            if (target.classList.contains("ed-reminder-clear")) {
+                e.stopPropagation();
+                removeReminder(publicId, timing);
+                chip.classList.remove("set");
+                // Re-render chip without checkmark/clear
+                chip.innerHTML = timing;
+                showToast(`Reminder removed: ${timing}`, "info");
                 return;
             }
 
-            await navigator.clipboard.writeText(shareUrl);
-            showMessage("Event link copied", "success");
-        } catch {
-            showMessage("Sharing did not complete", "error");
-        }
-    });
-
-    calendarButton?.addEventListener("click", () => {
-        createCalendarFile(event);
-        showMessage("Calendar file downloaded", "success");
-    });
-
-    venueButton?.addEventListener("click", () => {
-        const targetUrl = isOnlineEvent(event) && event.meetingLink ? event.meetingLink : mapUrl;
-        window.open(targetUrl, "_blank", "noopener,noreferrer");
-    });
-
-    reserveButton?.addEventListener("click", () => {
-        showMessage("Ticket checkout can be connected next", "success");
-    });
-
-    document.querySelectorAll<HTMLElement>("[data-reminder-preset]").forEach((button) => {
-        button.addEventListener("click", () => {
-            const preset = button.dataset.reminderPreset as ReminderPreset | undefined;
-            if (!preset) return;
-
-            setReminderPreset(eventKey, preset);
-            syncReminderState();
-            showMessage(`Reminder set for ${preset} before the event`, "success");
-        });
-    });
-
-    document.getElementById("clearReminderBtn")?.addEventListener("click", () => {
-        clearReminderPreset(eventKey);
-        syncReminderState();
-        showMessage("Reminder cleared", "success");
-    });
-
-    alertToggle?.addEventListener("click", async () => {
-        const current = getAlertPreference(eventKey);
-        const next = updateAlertPreference(eventKey, { enabled: !current.enabled });
-
-        if (next.enabled && "Notification" in window && Notification.permission === "default") {
-            try {
-                await Notification.requestPermission();
-            } catch {
-                showMessage("Browser notification permission was not granted", "error");
+            const alreadySet = chip.classList.contains("set");
+            if (!alreadySet) {
+                setReminder(publicId, timing);
+                chip.classList.add("set");
+                chip.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><path d="M20 6L9 17L4 12"/></svg> ${timing} <span class="ed-reminder-clear" data-timing="${timing}" title="Remove reminder">×</span>`;
+                showToast(`Reminder set: ${timing}`, "info");
+                // TODO: call backend reminder API when connected
             }
-        }
-
-        syncAlertState();
-        showMessage(next.enabled ? "Notifications enabled" : "Notifications paused", "success");
-    });
-
-    document.querySelectorAll<HTMLElement>("[data-alert-key]").forEach((button) => {
-        button.addEventListener("click", () => {
-            const key = button.dataset.alertKey as "productUpdates" | "ticketDrops" | undefined;
-            if (!key) return;
-
-            const current = getAlertPreference(eventKey);
-            updateAlertPreference(eventKey, { [key]: !current[key] });
-            syncAlertState();
-            showMessage("Alert preference updated", "success");
         });
     });
 
-    syncSavedState();
-    syncReminderState();
-    syncAlertState();
+    // ── Ticket modal ───────────────────────────
+    const overlay = document.getElementById("edTicketOverlay")!;
+    const modalQtyLabel = document.getElementById("edModalQtyLabel")!;
+    const modalTotal = document.getElementById("edModalTotal")!;
+
+    function updateModal(): void {
+        const total = getTotal();
+        const tierName = tiers[selectedTierIdx]?.name || "ticket";
+        modalQtyLabel.textContent = `${qty} × ${tierName}`;
+        modalTotal.textContent = total === 0 ? "Free" : `₦${total.toLocaleString()}`;
+    }
+
+    document.getElementById("edBuyBtn")?.addEventListener("click", () => {
+        updateModal();
+        overlay.classList.add("show");
+    });
+
+    document.getElementById("edModalClose")?.addEventListener("click", () => {
+        overlay.classList.remove("show");
+    });
+
+    overlay.addEventListener("click", (e) => {
+        if (e.target === overlay) overlay.classList.remove("show");
+    });
+
+    document.getElementById("edModalConfirm")?.addEventListener("click", () => {
+        overlay.classList.remove("show");
+        // TODO: call backend booking API when connected
+        showToast(
+            isFree
+                ? "Registration confirmed! Check your email for details."
+                : "Redirecting to payment… (backend connector coming soon)",
+            "success"
+        );
+    });
+
+    // ── Close panels on outside click ─────────
+    document.addEventListener("click", (e) => {
+        const target = e.target as HTMLElement;
+        const inSidebar = target.closest(".ed-sidebar");
+        if (!inSidebar) {
+            sharePanel.classList.remove("show");
+            notifyPanel.classList.remove("show");
+            reminderCard.style.display = "none";
+            sharePanelOpen = false;
+            notifyPanelOpen = false;
+            reminderOpen = false;
+            document.querySelectorAll(".ed-action-mini").forEach(b => b.classList.remove("active"));
+        }
+    });
 }

@@ -1,12 +1,3 @@
-/**
- * Eventful Seed Script — plain JavaScript, no TypeScript needed
- * Run from inside the backend/ folder:
- *   node seed-events.js
- *
- * Make sure your backend is running first:
- *   npm run start:dev  (in a separate terminal)
- */
-
 const BASE_URL = 'http://localhost:4000';
 
 const seedEvents = [
